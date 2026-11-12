@@ -1,0 +1,15 @@
+node_modules
+dist
+test-results
+playwright-report
+blob-report
+.DS_Store
+.env
+.env.*
+!.env.example
+server/data/
+coverage/
+*.log
+*.tmp.*
+.vite/
+*.pem
