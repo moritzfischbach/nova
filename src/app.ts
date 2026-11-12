@@ -9,6 +9,8 @@ import { renderFinance } from './modules/finance/finance';
 import { renderGoals } from './modules/goals/goals';
 import { renderGrok } from './modules/grok/grok';
 import { renderSettings } from './modules/settings/settings';
+import { renderMorning } from './modules/morning/morning';
+import { renderHabits } from './modules/habits/habits';
 import logoSvg from './assets/logo.svg?raw';
 import { currentRoute, onRouteChange, ROUTE_HASHES } from './router';
 import type { RouteName } from './types';
@@ -18,7 +20,7 @@ import type { RouteName } from './types';
  * optional ein Tab. Grok Bot und Einstellungen sind über die Übersicht erreichbar.
  */
 const TABS: { route: RouteName; label: string; icon: string; testid: string; also?: RouteName[]; center?: boolean }[] = [
-  { route: 'overview', label: 'Nova', icon: icons.home, testid: 'tab-overview', also: ['grok', 'settings'] },
+  { route: 'overview', label: 'Nova', icon: icons.home, testid: 'tab-overview', also: ['grok', 'settings', 'morning', 'habits'] },
   { route: 'todos', label: 'Aufgaben', icon: icons.check, testid: 'tab-todos' },
   { route: 'chat', label: 'Chat', icon: logoSvg, testid: 'tab-chat', center: true },
   { route: 'calendar', label: 'Kalender', icon: icons.calendar, testid: 'tab-calendar' },
@@ -43,6 +45,8 @@ const renderers: Record<RouteName, (root: HTMLElement) => Promise<() => void>> =
   goals: renderGoals,
   grok: renderGrok,
   settings: renderSettings,
+  morning: renderMorning,
+  habits: renderHabits,
   chat: (root) => import('./modules/chat/chat').then((m) => m.renderChat(root)),
 };
 

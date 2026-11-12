@@ -89,6 +89,41 @@ export const CHAT_TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'gewohnheit_anlegen',
+      description: 'Legt eine neue Gewohnheit (Angewohnheit) in Nova an, z. B. "Wasser trinken" täglich oder "Sport" 3× pro Woche.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Kurzer Name, z. B. "10 Minuten lesen"' },
+          emoji: { type: 'string', description: 'Ein passendes Emoji (optional)' },
+          haeufigkeit: { type: 'string', enum: ['taeglich', 'wochentage', 'pro_woche'], description: 'taeglich, bestimmte wochentage oder x-mal pro_woche' },
+          wochentage: { type: 'array', items: { type: 'string', enum: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] }, description: 'nur bei haeufigkeit=wochentage' },
+          mal_pro_woche: { type: 'integer', description: 'nur bei haeufigkeit=pro_woche (1–6)' },
+          erinnerung: { type: 'string', description: 'Erinnerungszeit HH:MM (optional)' },
+        },
+        required: ['name'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'gewohnheit_abhaken',
+      description: 'Markiert eine bestehende Gewohnheit für einen Tag als erledigt (oder nimmt das zurück).',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Name der Gewohnheit wie in Nova' },
+          datum: { type: 'string', description: 'YYYY-MM-DD (Standard: heute)' },
+          erledigt: { type: 'boolean', description: 'false, um das Abhaken zurückzunehmen (Standard: true)' },
+        },
+        required: ['name'],
+      },
+    },
+  },
 ];
 
 export const TOOL_NAMES = CHAT_TOOLS.map((t) => t.function.name);

@@ -38,6 +38,9 @@ export function scriptFor(messages) {
   const today = new Date().toISOString().slice(0, 10);
   if (q.includes('fehler401')) return { status: 401 };
   if (q.includes('langsam')) return { slow: true, text: 'Langsame Antwort.' };
+  if (q.includes('plane bitte meinen tag')) return { tools: [{ name: 'termin_anlegen', args: { titel: 'Fokus: Angebot schreiben', datum: today, beginn: '09:00', ende: '10:30' } }, { name: 'termin_anlegen', args: { titel: 'Lesen', datum: today, beginn: '21:00', ende: '21:20' } }] };
+  if (q.includes('gewohnheit an')) return { tools: [{ name: 'gewohnheit_anlegen', args: { name: 'Meditieren', emoji: '🧘', haeufigkeit: 'wochentage', wochentage: ['Mo', 'Mi', 'Fr'], erinnerung: '07:15' } }] };
+  if (q.includes('abhaken')) return { tools: [{ name: 'gewohnheit_abhaken', args: { name: 'wasser' } }] };
   if (q.includes('aufgabe')) return { tools: [{ name: 'aufgabe_anlegen', args: { titel: 'Milch kaufen', faellig_am: today } }] };
   if (q.includes('termin')) return { tools: [{ name: 'termin_anlegen', args: { titel: 'Zahnarzt', datum: today, beginn: '15:00', ende: '16:00' } }] };
   if (q.includes('sparziel')) return { tools: [{ name: 'sparziel_einzahlen', args: { ziel: 'Urlaub', betrag: 50 } }] };

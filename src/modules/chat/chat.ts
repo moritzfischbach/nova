@@ -38,6 +38,8 @@ function statusNote(status: ChatStatus): string {
   return '';
 }
 
+const AUTO_SEND_KEY = 'nova.chatAutoSend';
+
 export async function renderChat(root: HTMLElement): Promise<() => void> {
   let disposed = false;
   let conv: ChatConversation = (await (async () => {
@@ -232,7 +234,10 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
   async function send(text: string): Promise<void> {
     const value = text.trim();
     if (!value) return;
-    if (busy) return;
+    if (busy) {
+      toast('Nova antwortet noch – einen Moment, dann kannst du weiterschreiben.', 'info');
+      return;
+    }
     if (!canSend()) {
       toast(statusNote(status) || 'Senden ist gerade nicht möglich.', 'error');
       if (!status.reachable) void refreshStatus();
@@ -429,7 +434,28 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
     statusEl.querySelector('[data-testid="pair-start"]')?.addEventListener('click', () => openPairingSheet(() => void refreshStatus()));
     if (status.model) sub.textContent = `Grok · ${status.model}`;
     updateControls();
+    maybeAutoSend();
   };
+  // "Tag planen mit Nova" (Morgenplaner) hands over a prompt that is sent once the server is ready.
+  let autoSend = sessionStorage.getItem(AUTO_SEND_KEY);
+  sessionStorage.removeItem(AUTO_SEND_KEY);
+  if (autoSend) {
+    conv = newConversation();
+    localStorage.removeItem(ACTIVE_KEY);
+    renderLog();
+    input.value = autoSend;
+    autosize();
+  }
+  function maybeAutoSend(): void {
+    if (!autoSend || disposed) return;
+    if (canSend()) {
+      const text = autoSend;
+      autoSend = null;
+      void send(text);
+    } else if (status.reachable || status.staticOnly) {
+      autoSend = null; // stays in the input; the note above explains why it cannot be sent
+    }
+  }
   const onVisible = () => {
     if (document.visibilityState === 'visible' && (!status.reachable || (status.tokenRequired && !status.authorized))) void refreshStatus();
   };

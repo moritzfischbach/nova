@@ -1,7 +1,22 @@
 /** Nova Chat tools: German labels for the confirmation chips and client-side execution. */
 import { formatDateHuman, todayISO } from '../../shared/dates';
 import { formatEUR } from '../../shared/money';
-import type { BotModule, ChatToolCall, ChatToolName } from '../../types';
+import type { BotModule, ChatToolCall, ChatToolName, HabitFrequency } from '../../types';
+import { frequencyLabel, parseWeekdays } from '../habits/logic';
+
+/** Frequency from chat-tool arguments (lenient). */
+export function habitFrequencyFromArgs(a: Record<string, unknown>): HabitFrequency {
+  const kind = typeof a.haeufigkeit === 'string' ? a.haeufigkeit.toLowerCase() : '';
+  const days = parseWeekdays(a.wochentage);
+  const times = Math.round(Number(a.mal_pro_woche));
+  const perWeek = (): HabitFrequency => (times >= 1 && times <= 6 ? { type: 'perWeek', times } : { type: 'daily' });
+  const weekdays = (): HabitFrequency => (days.length >= 1 && days.length <= 6 ? { type: 'weekdays', days } : { type: 'daily' });
+  if (kind.startsWith('t')) return { type: 'daily' };
+  if (kind.includes('pro')) return perWeek();
+  if (kind.startsWith('wochentag')) return weekdays();
+  if (days.length >= 1 && days.length <= 6) return weekdays();
+  return perWeek();
+}
 
 export const TOOL_LABELS: Record<ChatToolName, string> = {
   aufgabe_anlegen: 'Aufgabe anlegen',
@@ -9,6 +24,8 @@ export const TOOL_LABELS: Record<ChatToolName, string> = {
   finanzeintrag_erfassen: 'Finanzeintrag',
   sparziel_einzahlen: 'Sparziel-Einzahlung',
   an_grok_bot_weitergeben: 'An Grok Bot weitergeben',
+  gewohnheit_anlegen: 'Gewohnheit anlegen',
+  gewohnheit_abhaken: 'Gewohnheit abhaken',
 };
 
 type Args = Record<string, unknown>;
@@ -62,6 +79,12 @@ export function describeToolCall(call: Pick<ChatToolCall, 'name' | 'arguments'>)
     }
     case 'an_grok_bot_weitergeben':
       return `„${str(a.aufgabe, 160) || '—'}“`;
+    case 'gewohnheit_anlegen':
+      return `${str(a.emoji, 8) || '✨'} „${str(a.name, 60) || '?'}“ · ${frequencyLabel(habitFrequencyFromArgs(a))}${hhmm(a.erinnerung) ? ` · Erinnerung ${hhmm(a.erinnerung)}` : ''}`;
+    case 'gewohnheit_abhaken': {
+      const date = isoDate(a.datum);
+      return `„${str(a.name, 60) || '?'}“ ${a.erledigt === false ? 'nicht erledigt' : 'erledigt'} · ${date && date !== todayISO() ? formatDateHuman(date) : 'heute'}`;
+    }
     default:
       return 'Unbekannte Aktion';
   }
@@ -150,6 +173,37 @@ export async function executeToolCall(call: Pick<ChatToolCall, 'name' | 'argumen
         if (rec.status === 'gesendet') return done('An Grok Bot gesendet – die Antwort kommt in der Grok-App.', '#/grok', { ergebnis: 'An Grok Bot gesendet. Die Antwort erscheint in der Grok-App, nicht hier.' });
         if (rec.status === 'wartend') return done('Für Grok Bot gespeichert – wird gesendet, sobald Nova wieder online ist. Die Antwort kommt in der Grok-App.', '#/grok', { ergebnis: 'In der Warteschlange für Grok Bot' });
         return failed(rec.error ?? 'Grok Bot hat die Anfrage nicht angenommen.');
+      }
+      case 'gewohnheit_anlegen': {
+        const name = str(a.name, 60);
+        if (!name) return failed('Die Gewohnheit braucht einen Namen.');
+        const { listHabits, saveHabit, findHabitByName } = await import('../habits/repo');
+        const existing = findHabitByName(await listHabits(), name);
+        if (existing && existing.name.toLowerCase() === name.toLowerCase()) return failed(`„${existing.name}“ gibt es schon.`);
+        const frequency = habitFrequencyFromArgs(a);
+        const emoji = str(a.emoji, 8) || '✨';
+        const h = await saveHabit({ name, emoji, frequency, reminderTime: hhmm(a.erinnerung) });
+        void import('../../shared/reminders').then((m) => m.syncReminders());
+        return done(`${h.emoji} Gewohnheit „${h.name}“ angelegt (${frequencyLabel(frequency)}).`, `#/gewohnheiten?id=${h.id}`, { ergebnis: 'Gewohnheit angelegt', name: h.name, haeufigkeit: frequencyLabel(frequency) });
+      }
+      case 'gewohnheit_abhaken': {
+        const name = str(a.name, 60);
+        const { listHabits, setHabitDone, findHabitByName } = await import('../habits/repo');
+        const { streak } = await import('../habits/logic');
+        const habits = await listHabits();
+        const h = findHabitByName(habits, name);
+        if (!h) return failed(habits.length ? `Keine Gewohnheit „${name}“ gefunden. Vorhanden: ${habits.map((x) => x.name).join(', ')}.` : 'Es gibt noch keine Gewohnheiten.');
+        const date = isoDate(a.datum) ?? todayISO();
+        if (date > todayISO()) return failed('Zukünftige Tage kann ich nicht abhaken.');
+        const doneFlag = a.erledigt !== false;
+        const next = (await setHabitDone(h.id, date, doneFlag)) ?? h;
+        const s = streak(next, todayISO());
+        void import('../../shared/reminders').then((m) => m.syncReminders());
+        return done(
+          `${h.emoji} „${h.name}“ ${doneFlag ? 'abgehakt' : 'zurückgesetzt'}${date !== todayISO() ? ` (${formatDateHuman(date)})` : ''}${s.current ? ` – Serie: ${s.current} ${s.unit === 'Tag' ? (s.current === 1 ? 'Tag' : 'Tage') : s.current === 1 ? 'Woche' : 'Wochen'}` : ''}.`,
+          `#/gewohnheiten?id=${h.id}`,
+          { ergebnis: doneFlag ? 'Abgehakt' : 'Zurückgesetzt', name: h.name, datum: date, serie: s.current, einheit: s.unit },
+        );
       }
       default:
         return failed('Unbekannte Aktion.');

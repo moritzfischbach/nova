@@ -10,6 +10,8 @@ export const ROUTE_HASHES: Record<RouteName, string> = {
   grok: '#/grok',
   settings: '#/einstellungen',
   chat: '#/chat',
+  morning: '#/morgen',
+  habits: '#/gewohnheiten',
 };
 
 function hashPath(): string {

@@ -81,7 +81,7 @@ export interface Transaction {
   createdAt: string;
 }
 
-export type RouteName = 'overview' | 'todos' | 'calendar' | 'finance' | 'goals' | 'grok' | 'settings' | 'chat';
+export type RouteName = 'overview' | 'todos' | 'calendar' | 'finance' | 'goals' | 'grok' | 'settings' | 'chat' | 'morning' | 'habits';
 
 export type BotModule = 'todos' | 'kalender' | 'finanzen' | 'ziele' | 'allgemein';
 export type BotRequestStatus = 'wartend' | 'gesendet' | 'fehler';
@@ -137,7 +137,7 @@ export interface MetaRecord {
 }
 
 /* Nova Chat */
-export type ChatToolName = 'aufgabe_anlegen' | 'termin_anlegen' | 'finanzeintrag_erfassen' | 'sparziel_einzahlen' | 'an_grok_bot_weitergeben';
+export type ChatToolName = 'aufgabe_anlegen' | 'termin_anlegen' | 'finanzeintrag_erfassen' | 'sparziel_einzahlen' | 'an_grok_bot_weitergeben' | 'gewohnheit_anlegen' | 'gewohnheit_abhaken';
 export type ToolCallStatus = 'offen' | 'ausgefuehrt' | 'abgelehnt' | 'fehler';
 
 export interface ChatToolCall {
@@ -203,6 +203,8 @@ export interface MorningConfig {
   wakeTime: string; // HH:MM
   remind: boolean;
   routine: RoutineItem[];
+  /** optional monthly spending budget in EUR */
+  budget?: number;
   /** routine items checked per day: { '2026-11-12': ['id1'] } (only recent days kept) */
   checks: Record<string, string[]>;
 }

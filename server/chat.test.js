@@ -53,8 +53,8 @@ describe('system prompt', () => {
     expect(p).toContain('<nova_daten>\nOffene Aufgaben: Milch\n</nova_daten>');
     expect(systemPrompt('')).toContain('ausgeschaltet');
   });
-  it('defines the five tools', () => {
-    expect(CHAT_TOOLS.map((t) => t.function.name)).toEqual(['aufgabe_anlegen', 'termin_anlegen', 'finanzeintrag_erfassen', 'sparziel_einzahlen', 'an_grok_bot_weitergeben']);
+  it('defines the seven tools', () => {
+    expect(CHAT_TOOLS.map((t) => t.function.name)).toEqual(['aufgabe_anlegen', 'termin_anlegen', 'finanzeintrag_erfassen', 'sparziel_einzahlen', 'an_grok_bot_weitergeben', 'gewohnheit_anlegen', 'gewohnheit_abhaken']);
     expect(DEFAULT_XAI_MODEL).toBe('grok-4.7');
   });
 });
@@ -83,7 +83,7 @@ describe('POST /api/chat against mock xAI', () => {
     expect(up.headers.authorization).toBe(`Bearer ${MOCK_XAI_KEY}`);
     expect(up.headers['x-grok-conv-id']).toBe('conv-1');
     expect(up.body).toMatchObject({ model: 'grok-test-model', stream: true, tool_choice: 'auto' });
-    expect(up.body.tools).toHaveLength(5);
+    expect(up.body.tools).toHaveLength(7);
     expect(up.body.messages[0].role).toBe('system');
     expect(up.body.messages[0].content).toContain('Offene Aufgaben: Steuer');
     expect(up.body.messages.at(-1)).toEqual({ role: 'user', content: 'Hallo Nova' });

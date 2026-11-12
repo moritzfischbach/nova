@@ -8,19 +8,41 @@ import { listTodoLists, listTodos, openTodoCount } from '../todos/repo';
 import { listGoals } from '../goals/repo';
 import { goalProgress } from '../goals/match';
 import { icons } from '../../shared/icons';
+import { listHabits } from '../habits/repo';
+import { habitRow, wireHabitToggles } from '../habits/habits';
+import { isDone } from '../habits/logic';
+import { dueTodos, habitsToday, routineProgress } from '../morning/logic';
+import { getMorningConfig } from '../morning/repo';
+import { navigate } from '../../router';
 
-const COMING_SOON = ['Morgenplaner', 'Angewohnheiten', 'Sales-Trainer'];
+const COMING_SOON = ['Sales-Trainer'];
 
 export async function renderOverview(root: HTMLElement): Promise<() => void> {
+  wireHabitToggles(root, () => draw());
+  root.addEventListener('click', (e) => {
+    const open = (e.target as HTMLElement).closest<HTMLElement>('[data-habit-open]');
+    if (open) navigate('habits', { id: open.dataset.habitOpen! });
+  });
+  await draw();
+  async function draw(): Promise<void> {
   const today = todayISO();
-  const [goals, openCount, lists, todos, events, summary] = await Promise.all([
+  const [goals, openCount, lists, todos, events, summary, habits, morning] = await Promise.all([
     listGoals(),
     openTodoCount(),
     listTodoLists(),
     listTodos(),
     upcomingInstances(today, 60, 4).then((list) => list.map((i) => ({ ...i.event, date: i.date }))),
     summarizeMonth(monthKey(today)),
+    listHabits(),
+    getMorningConfig(),
   ]);
+  const hToday = habitsToday(habits, today);
+  const hDone = hToday.filter((h) => isDone(h, today)).length;
+  const todayEvents = events.filter((e) => e.date === today).length;
+  const dueCount = dueTodos(todos, today).length;
+  const rp = routineProgress(morning, today);
+  const hour = new Date().getHours();
+  const briefTitle = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Dein Tag' : 'Morgen vorbereiten';
 
   const openTodos = todos.filter((item) => !item.done).slice(0, 4);
   const listNames = new Map(lists.map((list) => [list.id, list.name]));
@@ -41,6 +63,16 @@ export async function renderOverview(root: HTMLElement): Promise<() => void> {
           <a href="#/einstellungen" data-testid="open-settings">${icons.gear} Einstellungen</a>
         </div>
       </header>
+
+      <a class="morning-card" href="#/morgen" data-testid="open-morning">
+        <span class="morning-sun" aria-hidden="true"></span>
+        <div class="morning-copy">
+          <p class="dash-label">Morgenplaner</p>
+          <strong>${briefTitle}</strong>
+          <span>${todayEvents} ${todayEvents === 1 ? 'Termin' : 'Termine'} · ${dueCount} fällig · Routine ${rp.done}/${rp.total}</span>
+        </div>
+        <span class="morning-go" aria-hidden="true">${icons.chevronRight}</span>
+      </a>
 
       <div class="dash-grid">
         <a class="dash-card" href="#/aufgaben" data-testid="dash-todos">
@@ -67,6 +99,18 @@ export async function renderOverview(root: HTMLElement): Promise<() => void> {
           })()}</span>
         </a>
       </div>
+
+      <section data-testid="overview-habits">
+        <div class="section-head">
+          <h2>Gewohnheiten${hToday.length ? ` <span class="count">${hDone}/${hToday.length}</span>` : ''}</h2>
+          <a href="#/gewohnheiten" class="text-btn" data-testid="open-habits">${habits.length ? 'Alle' : 'Anlegen'}</a>
+        </div>
+        ${
+          hToday.length
+            ? `<ul class="card-list">${hToday.slice(0, 4).map((h) => habitRow(h, today, { detail: false })).join('')}</ul>`
+            : `<a class="empty-card block" href="#/gewohnheiten${habits.length ? '' : '?new=1'}">${habits.length ? 'Heute steht keine Gewohnheit an.' : 'Bau dir gute Gewohnheiten auf – mit Serien und Heatmap.'}</a>`
+        }
+      </section>
 
       <section>
         <div class="section-head">
@@ -131,6 +175,8 @@ export async function renderOverview(root: HTMLElement): Promise<() => void> {
       </aside>
     </section>
   `;
+
+  }
 
   return () => {
     root.innerHTML = '';

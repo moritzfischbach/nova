@@ -1,7 +1,8 @@
 /** Compact summary of local Nova data for the chat (kept well below the server's 3000-char limit). */
 import { addDays, todayISO } from '../../shared/dates';
 import { formatEUR } from '../../shared/money';
-import type { Goal, TodoItem, TodoList } from '../../types';
+import type { Goal, Habit, TodoItem, TodoList } from '../../types';
+import { frequencyLabel, isDone, isDueOn, streak } from '../habits/logic';
 import type { EventInstance } from '../calendar/recurrence';
 import { savedAmount } from '../goals/match';
 
@@ -22,6 +23,7 @@ export interface ContextData {
   instances: EventInstance[];
   month: { label: string; expenses: number; income: number; byCategory: { name: string; amount: number }[] };
   goals: Goal[];
+  habits?: Habit[];
 }
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -54,20 +56,29 @@ export function formatContext(d: ContextData): string {
         : `- Ziel „${clip(g.title, 50)}“${g.targetDate ? ` bis ${g.targetDate}` : ''}`,
     ),
   );
+  const habits = (d.habits ?? []).filter((h) => !h.archived).slice(0, 10);
+  if (habits.length) {
+    lines.push(`Gewohnheiten (${habits.length}):`);
+    habits.forEach((h) => {
+      const s = streak(h, d.today);
+      lines.push(`- ${h.emoji} ${clip(h.name, 40)} (${frequencyLabel(h.frequency)}): heute ${isDone(h, d.today) ? 'erledigt' : isDueOn(h, d.today) ? 'offen' : 'frei'}${s.current ? `, Serie ${s.current} ${s.unit === 'Tag' ? 'Tage' : 'Wochen'}` : ''}`);
+    });
+  }
   let text = lines.join('\n');
   if (text.length > CONTEXT_MAX) text = `${text.slice(0, CONTEXT_MAX - 1)}…`;
   return text;
 }
 
 export async function buildContext(): Promise<string> {
-  const [{ listTodos, listTodoLists }, { upcomingInstances }, { summarizeMonth, monthKey }, { listGoals }] = await Promise.all([
+  const [{ listTodos, listTodoLists }, { upcomingInstances }, { summarizeMonth, monthKey }, { listGoals }, { listHabits }] = await Promise.all([
     import('../todos/repo'),
     import('../calendar/repo'),
     import('../finance/repo'),
     import('../goals/repo'),
+    import('../habits/repo'),
   ]);
   const today = todayISO();
-  const [todos, lists, instances, month, goals] = await Promise.all([listTodos(), listTodoLists(), upcomingInstances(today, 8, 20), summarizeMonth(monthKey(today)), listGoals()]);
+  const [todos, lists, instances, month, goals, habits] = await Promise.all([listTodos(), listTodoLists(), upcomingInstances(today, 8, 20), summarizeMonth(monthKey(today)), listGoals(), listHabits()]);
   return formatContext({
     today,
     todos,
@@ -80,5 +91,6 @@ export async function buildContext(): Promise<string> {
       byCategory: month.byCategory.map((c) => ({ name: c.category.name, amount: c.amount })),
     },
     goals,
+    habits,
   });
 }

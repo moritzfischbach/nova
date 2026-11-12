@@ -4,7 +4,8 @@
  */
 import { addDays, parseLocalDate } from './dates';
 import { expandAll } from '../modules/calendar/recurrence';
-import type { CalendarEvent, Goal, TodoItem } from '../types';
+import type { CalendarEvent, Goal, Habit, MorningConfig, TodoItem } from '../types';
+import { isDone, isScheduled, weekCount } from '../modules/habits/logic';
 
 export interface PlannedReminder {
   id: string;
@@ -29,7 +30,7 @@ function lead(minutes: number): string {
 }
 
 export function planReminders(
-  input: { events: CalendarEvent[]; todos: TodoItem[]; goals: Goal[] },
+  input: { events: CalendarEvent[]; todos: TodoItem[]; goals: Goal[]; habits?: Habit[]; morning?: MorningConfig },
   now: Date = new Date(),
   horizonDays = 30,
 ): PlannedReminder[] {
@@ -77,6 +78,20 @@ export function planReminders(
       { id: `goal:${g.id}:0d`, title: `Heute ist Zieldatum: ${g.title}`, body: 'Erreicht? Dann hak es in Nova ab.', url: `#/ziele?id=${g.id}` },
       localInstant(g.targetDate, '09:00'),
     );
+  }
+
+  // Daily things (wake-up brief, habit reminders) only for the next two weeks to keep the set small.
+  const dailyDays = Math.min(horizonDays, 14);
+  for (let i = 0; i <= dailyDays; i += 1) {
+    const date = addDays(today, i);
+    if (input.morning?.remind) {
+      push({ id: `morning:${date}`, title: 'Guten Morgen ☀️', body: 'Dein Morgenplaner ist bereit – Termine, Aufgaben und Gewohnheiten für heute.', url: '#/morgen' }, localInstant(date, input.morning.wakeTime));
+    }
+    for (const h of input.habits ?? []) {
+      if (h.archived || !h.reminderTime || isDone(h, date)) continue;
+      if (h.frequency.type === 'perWeek' ? weekCount(h, date) >= h.frequency.times : !isScheduled(h.frequency, date)) continue;
+      push({ id: `habit:${h.id}:${date}`, title: `${h.emoji} ${h.name}`, body: 'Zeit für deine Gewohnheit. Abhaken in Nova.', url: `#/gewohnheiten?id=${h.id}` }, localInstant(date, h.reminderTime));
+    }
   }
 
   return out.sort((a, b) => a.at.localeCompare(b.at)).slice(0, 500);

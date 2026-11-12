@@ -3,7 +3,7 @@
  * The VAPID private key stays on the server; the public key is fetched at runtime.
  */
 import { getAll, STORES } from '../data/db';
-import type { CalendarEvent, Goal, TodoItem } from '../types';
+import type { CalendarEvent, Goal, Habit, TodoItem } from '../types';
 import { apiHeaders, apiUrl, fetchWithTimeout, STATIC_ONLY } from './api';
 import { planReminders } from './reminderPlan';
 
@@ -100,16 +100,18 @@ export function syncReminders(): Promise<void> {
   if (pending) return pending;
   pending = (async () => {
     try {
-      const [events, todos, goals] = await Promise.all([
+      const [events, todos, goals, habits, morning] = await Promise.all([
         getAll<CalendarEvent>(STORES.events),
         getAll<TodoItem>(STORES.todos),
         getAll<Goal>(STORES.goals),
+        getAll<Habit>(STORES.habits),
+        import('../modules/morning/repo').then((m) => m.getMorningConfig()),
       ]);
       // Re-register this device: the free server has no persistent disk and may have forgotten it.
       const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
       const sub = await reg?.pushManager.getSubscription();
       if (sub) await postJson('api/push/subscribe', { subscription: sub.toJSON(), label: isIOS() ? 'iPhone' : navigator.platform }).catch(() => undefined);
-      const reminders = planReminders({ events, todos, goals });
+      const reminders = planReminders({ events, todos, goals, habits, morning });
       await postJson('api/push/reminders', { reminders }, 'PUT');
     } catch {
       /* offline – next change or app start retries */
