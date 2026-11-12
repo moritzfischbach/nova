@@ -36,6 +36,7 @@ export async function renderOverview(root: HTMLElement): Promise<() => void> {
         <h1>${escapeHtml(greeting())}.</h1>
         <p class="lede">Ich bin Nova, deine persönliche Assistentin. Hier siehst du den Stand der Dinge – Aufgaben, Termine und Finanzen bleiben bei dir auf dem Gerät.</p>
         <div class="hero-actions">
+          <a href="#/chat" class="hero-chat" data-testid="open-chat">${icons.chat} Mit Nova chatten</a>
           <a href="#/grok" data-testid="open-grok">${icons.sparkle} Nova fragt Grok</a>
           <a href="#/einstellungen" data-testid="open-settings">${icons.gear} Einstellungen</a>
         </div>

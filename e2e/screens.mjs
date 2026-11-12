@@ -27,6 +27,7 @@ for (const t of ['Präsentation für Montag vorbereiten', 'Geschenk für Lena be
 }
 await page.getByLabel('Abhaken').first().click();
 await page.waitForTimeout(500);
+await page.getByTestId('tab-finance').click();
 await page.getByTestId('tab-goals').click();
 await page.getByTestId('goal-new').waitFor();
 for (const [title, amount] of [['Urlaub Lissabon', '1.800'], ['Notgroschen', '5.000']]) {
@@ -88,5 +89,26 @@ await page.getByTestId('cal-add').click();
 await settle();
 await page.screenshot({ path: `${out}/calendar-sheet.png` });
 console.log(`${out}/calendar-sheet.png`);
+// chat (against the e2e server with mock xAI)
+if (process.env.SCREENS_CHAT !== '0') {
+  const shot = async (name) => { await settle(); await page.screenshot({ path: `${out}/${name}.png` }); console.log(`${out}/${name}.png`); };
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+  await page.getByTestId('tab-chat').click();
+  await page.getByTestId('chat-suggestions').waitFor();
+  await shot('chat-empty');
+  await page.getByTestId('chat-input').fill('Hallo Nova, was kannst du?');
+  await page.getByTestId('chat-send').click();
+  await page.locator('.msg.assistant:not(.streaming) [data-testid="msg-text"]').waitFor();
+  await shot('chat-markdown');
+  await page.getByTestId('chat-input').fill('Leg eine Aufgabe an: Milch kaufen');
+  await page.getByTestId('chat-send').click();
+  await page.getByTestId('tool-confirm').waitFor();
+  await shot('chat-tools');
+  await page.getByTestId('tool-confirm').click();
+  await page.locator('[data-testid="tool-chip"][data-status="ausgefuehrt"]').waitFor();
+  await page.locator('.msg.assistant:not(.streaming)').nth(2).waitFor();
+  await shot('chat-tool-done');
+}
 console.log(errors.length ? `ERRORS: ${errors.join(' | ')}` : 'no console errors');
 await browser.close();

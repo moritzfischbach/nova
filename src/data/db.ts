@@ -1,7 +1,7 @@
 import type { MetaRecord } from '../types';
 
 const DB_NAME = 'nova';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const STORES = {
   todoLists: 'todoLists',
@@ -12,6 +12,7 @@ export const STORES = {
   meta: 'meta',
   botRequests: 'botRequests',
   goals: 'goals',
+  chats: 'chats',
 } as const;
 
 export type StoreName = (typeof STORES)[keyof typeof STORES];
@@ -55,6 +56,10 @@ export function getDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(STORES.goals)) {
           db.createObjectStore(STORES.goals, { keyPath: 'id' });
+        }
+        // v3: Nova-Chat-Verläufe
+        if (!db.objectStoreNames.contains(STORES.chats)) {
+          db.createObjectStore(STORES.chats, { keyPath: 'id' });
         }
         if (oldVersion > 0 && oldVersion < 2) {
           const tx = request.transaction;

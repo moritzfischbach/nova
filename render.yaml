@@ -1,0 +1,57 @@
+# Render Blueprint for the Nova server (API + PWA from one Node process).
+# Secrets are NOT stored here: every `sync: false` variable is entered in the Render
+# dashboard (or via the Render API) and never committed.
+services:
+  - type: web
+    name: nova-server
+    runtime: node
+    plan: free            # Free plan: no persistent disk -> server/data is ephemeral (see README)
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci && npm run build
+    startCommand: node server/node.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: XAI_MODEL
+        value: grok-4.7
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "10"
+      - key: CHAT_RATE_LIMIT_PER_MINUTE
+        value: "20"
+      - key: VAPID_SUBJECT
+        value: mailto:nova@example.invalid
+      - key: GOOGLE_TIMEZONE
+        value: Europe/Berlin
+      - key: ALLOWED_ORIGINS
+        value: https://moritzfischbach.github.io
+      # --- secrets / per-deployment values (set in the dashboard, never here) ---
+      - key: XAI_API_KEY
+        sync: false
+      - key: NOVA_APP_TOKEN
+        sync: false
+      - key: GROKBOT_WEBHOOK_URL
+        sync: false
+      - key: GROKBOT_WEBHOOK_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: CALENDAR_FEED_TOKEN
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+    # Persistent storage needs a paid instance. If you upgrade later, uncomment:
+    # disk:
+    #   name: nova-data
+    #   mountPath: /opt/render/project/src/server/data
+    #   sizeGB: 1

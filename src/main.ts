@@ -3,7 +3,6 @@ import './styles.css';
 import { ensureSeed } from './data/seed';
 import { startApp } from './app';
 import { syncReminders } from './shared/reminders';
-
 async function registerServiceWorker(): Promise<void> {
   if (!('serviceWorker' in navigator) || !import.meta.env.PROD) return;
   try {

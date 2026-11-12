@@ -81,7 +81,7 @@ export interface Transaction {
   createdAt: string;
 }
 
-export type RouteName = 'overview' | 'todos' | 'calendar' | 'finance' | 'goals' | 'grok' | 'settings';
+export type RouteName = 'overview' | 'todos' | 'calendar' | 'finance' | 'goals' | 'grok' | 'settings' | 'chat';
 
 export type BotModule = 'todos' | 'kalender' | 'finanzen' | 'ziele' | 'allgemein';
 export type BotRequestStatus = 'wartend' | 'gesendet' | 'fehler';
@@ -134,4 +134,41 @@ export interface Goal {
 export interface MetaRecord {
   key: string;
   value: unknown;
+}
+
+/* Nova Chat */
+export type ChatToolName = 'aufgabe_anlegen' | 'termin_anlegen' | 'finanzeintrag_erfassen' | 'sparziel_einzahlen' | 'an_grok_bot_weitergeben';
+export type ToolCallStatus = 'offen' | 'ausgefuehrt' | 'abgelehnt' | 'fehler';
+
+export interface ChatToolCall {
+  id: string;
+  name: ChatToolName;
+  /** JSON-String wie vom Modell geliefert */
+  arguments: string;
+  status: ToolCallStatus;
+  /** Ergebnis für das Modell (JSON-String) */
+  result?: string;
+  /** Kurzbeschreibung für die Anzeige */
+  summary?: string;
+  /** Link in Nova, z. B. #/aufgaben */
+  link?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  createdAt: string;
+  toolCalls?: ChatToolCall[];
+  toolCallId?: string;
+  error?: string;
+  model?: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
 }

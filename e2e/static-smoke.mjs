@@ -27,6 +27,7 @@ await step('Aufgabe anlegen', async () => {
   await ex(page.getByTestId('todo-item').filter({ hasText: 'Live-Test Aufgabe' })).toBeVisible();
 });
 await step('Ziel anlegen', async () => {
+  await page.getByTestId('tab-finance').click();
   await page.getByTestId('tab-goals').click();
   await page.getByTestId('goal-new').click();
   await page.getByTestId('goal-title').fill('Urlaub');
@@ -59,6 +60,12 @@ await step('Grok Bot: Hinweis statt Fehler, Formular deaktiviert', async () => {
   await page.goto(url + '#/grok');
   await ex(page.getByTestId('bot-status')).toContainText('Braucht den Nova-Server, kommt nach der Server-Einrichtung');
   await ex(page.getByTestId('bot-send')).toBeDisabled();
+});
+await step('Nova Chat: UI mit Server-Hinweis, Eingabe deaktiviert', async () => {
+  await page.getByTestId('tab-chat').click();
+  await ex(page.getByTestId('chat-note')).toContainText('Nova Chat braucht den Nova-Server und einen xAI-Schlüssel');
+  await ex(page.getByTestId('chat-input')).toBeDisabled();
+  await ex(page.getByTestId('chat-suggestions')).toBeVisible();
 });
 await step('Einstellungen: Grok + Mitteilungen mit Hinweis', async () => {
   await page.goto(url + '#/einstellungen');

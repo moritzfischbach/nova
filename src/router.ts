@@ -9,6 +9,7 @@ export const ROUTE_HASHES: Record<RouteName, string> = {
   goals: '#/ziele',
   grok: '#/grok',
   settings: '#/einstellungen',
+  chat: '#/chat',
 };
 
 function hashPath(): string {

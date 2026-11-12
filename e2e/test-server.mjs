@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import webpush from 'web-push';
 import { createMockGoogle } from '../server/testing/mock-google.js';
 import { startTestPushService } from '../server/testing/test-push-service.js';
+import { createMockXai } from '../server/testing/mock-xai.js';
 
 const PORT = Number(process.env.E2E_PORT ?? 8797);
 const CONTROL_PORT = Number(process.env.E2E_CONTROL_PORT ?? 8798);
@@ -29,6 +30,9 @@ const google = createMockGoogle();
 const { config: googleConfig } = await google.listen();
 google.remote.insert({ summary: 'Aus Google', start: { date: '2026-11-20' }, end: { date: '2026-11-21' } });
 
+const xai = createMockXai();
+const { config: xaiConfig } = await xai.listen();
+
 const pushSvc = await startTestPushService();
 const device = pushSvc.subscription('e2e-device');
 const vapid = webpush.generateVAPIDKeys();
@@ -48,6 +52,9 @@ Object.assign(process.env, {
   SCHEDULER_INTERVAL_MS: '600000',
   NOVA_PUSH_INSECURE_AGENT: '1',
   ...googleConfig,
+  ...xaiConfig,
+  XAI_MODEL: 'grok-test',
+  CHAT_RATE_LIMIT_PER_MINUTE: '200',
 });
 
 const { pushAgentForTests } = await import('../server/node.js');
@@ -67,6 +74,7 @@ createServer(async (req, res) => {
     hookMode = url.searchParams.get('mode') ?? 'ok';
     return json({ hookMode });
   }
+  if (url.pathname === '/xai') return json(xai.requests.map((r) => r.body ?? r));
   if (url.pathname === '/device') return json(device.sub);
   if (url.pathname === '/push-received') return json(pushSvc.received.map((m) => ({ path: m.path, payload: device.decrypt(m.body) })));
   if (url.pathname === '/google') return json([...google.state.events.values()]);

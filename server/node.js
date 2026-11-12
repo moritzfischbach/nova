@@ -48,5 +48,5 @@ const port = Number(process.env.PORT ?? 8787);
 const hostname = process.env.HOST ?? '0.0.0.0';
 serve({ fetch: app.fetch, port, hostname }, (info) => {
   const configured = Boolean(process.env.GROKBOT_WEBHOOK_URL && process.env.GROKBOT_WEBHOOK_KEY);
-  console.log(`[nova-server] http://localhost:${info.port}  (Grok Bot ${configured ? 'konfiguriert' : 'nicht konfiguriert'}, Push ${push ? 'aktiv' : 'aus'}, Google ${process.env.GOOGLE_CLIENT_ID ? 'konfiguriert' : 'nicht konfiguriert'})`);
+  console.log(`[nova-server] http://localhost:${info.port}  (Grok Bot ${configured ? 'konfiguriert' : 'nicht konfiguriert'}, Push ${push ? 'aktiv' : 'aus'}, Google ${process.env.GOOGLE_CLIENT_ID ? 'konfiguriert' : 'nicht konfiguriert'}, Chat ${process.env.XAI_API_KEY ? 'konfiguriert' : 'nicht konfiguriert'})`);
 });

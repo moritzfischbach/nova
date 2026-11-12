@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { isValidWebhookUrl, safeEqual, validateBotRequest } from './validate.js';
 import { registerCalendarRoutes } from './calendar.js';
 import { registerPushRoutes } from './push.js';
+import { registerChatRoutes } from './chat.js';
 import { memoryStore } from './store.js';
 
 /**
@@ -71,6 +72,9 @@ export function createApp({ getConfig, log = () => {}, fetchImpl, store = memory
     if (c.req.method === 'OPTIONS') return c.body(null, 204);
     await next();
   });
+
+  // health check for hosting (Render etc.) – no secrets, no config details
+  app.get('/api/health', (c) => c.json({ ok: true }));
 
   app.get('/api/bot/status', (c) => {
     const cfg = getConfig(c);
@@ -183,6 +187,7 @@ export function createApp({ getConfig, log = () => {}, fetchImpl, store = memory
 
   registerCalendarRoutes(app, { getConfig, store, fetchImpl, log });
   registerPushRoutes(app, { getConfig, store, log, push });
+  registerChatRoutes(app, { getConfig, fetchImpl, log });
 
   app.all('/api/*', (c) => c.json({ ok: false, error: 'not_found' }, 404));
   app.onError((err, c) => {

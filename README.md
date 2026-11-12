@@ -65,6 +65,18 @@ nova/
   tests/  e2e/
 ```
 
+## Nova Chat (KI)
+
+Mittlerer Tab **Chat** (Logo) bzw. „Mit Nova chatten“ auf der Übersicht. Nova ist eine warme, knappe deutsche Assistentin auf Basis von **Grok (xAI)**.
+
+- **Server-Proxy** `POST /api/chat` → `https://api.x.ai/v1/chat/completions` (Streaming/SSE). Der Schlüssel `XAI_API_KEY` bleibt **nur auf dem Server**; Modell über `XAI_MODEL` (Standard `grok-4.7`). Schutz: `NOVA_APP_TOKEN` (öffentlich Pflicht), Origin-Allowlist, Rate-Limit `CHAT_RATE_LIMIT_PER_MINUTE` (Standard 20/min/IP), Größenlimits. Status: `GET /api/chat/status`.
+- **Kontext**: Auf Wunsch (Schalter „Nova-Daten teilen“ unter dem Eingabefeld) schickt Nova pro Anfrage eine kurze Zusammenfassung mit – offene Aufgaben, Termine der nächsten 7 Tage, Monatsfinanzen nach Kategorie, Ziele. Nichts davon wird auf dem Server gespeichert.
+- **Aktionen**: Nova kann Aufgaben, Termine, Ausgaben/Einnahmen und Sparziel-Einzahlungen vorschlagen. Jede Aktion erscheint als Karte und wird **erst nach „Ausführen“** lokal in Nova angelegt; danach antwortet Nova mit dem Ergebnis.
+- **Grok-App**: Für Recherche, E-Mails, Buchungen usw. schlägt Nova „An Grok Bot weitergeben“ vor – das geht über `/api/bot` an die Routine „Nova Inbox“, die Antwort kommt im **Grok-App-Chat**.
+- **Verläufe** in IndexedDB (mehrere Chats, löschen/leeren), Spracheingabe, Markdown ohne rohes HTML.
+- **Kopplung**: Damit der öffentliche Build keinen Zugangscode enthält, wird ein Gerät einmalig per Link gekoppelt: `https://<pages>/#/koppeln?code=<NOVA_APP_TOKEN>` (der Teil nach `#` geht nie an GitHub; Nova speichert ihn lokal und entfernt ihn sofort aus der Adresszeile). Alternativ: Einstellungen → Zugangscode.
+- Ohne Server (reiner Pages-Build) zeigt der Chat den Hinweis „Nova Chat braucht den Nova-Server und einen xAI-Schlüssel …“.
+
 ## Grok-Bot-Anbindung
 
 Nova → `POST /api/bot` (eigener Server) → Webhook der Grok-Bot-Routine. Die Antwort erscheint **im Grok-Bot-Chat**, nicht in Nova.
@@ -133,7 +145,7 @@ Kostenlos, ohne Drittanbieter: eigene **VAPID-Schlüssel** (`npm run gen:vapid` 
 
 ## Sicherheit
 
-- Geheimnisse nur in `.env` bzw. Host-Secrets: `GROKBOT_WEBHOOK_KEY`, `GOOGLE_CLIENT_SECRET`, `VAPID_PRIVATE_KEY`, `CALENDAR_FEED_TOKEN`, `NOVA_APP_TOKEN`. Tests prüfen, dass sie weder in Antworten noch im Bundle (`dist/`) auftauchen.
+- Geheimnisse nur in `.env` bzw. Host-Secrets: `GROKBOT_WEBHOOK_KEY`, `GOOGLE_CLIENT_SECRET`, `VAPID_PRIVATE_KEY`, `CALENDAR_FEED_TOKEN`, `NOVA_APP_TOKEN`, `XAI_API_KEY`. Tests prüfen, dass sie weder in Antworten noch im Bundle (`dist/`) auftauchen.
 - Ohne `NOVA_APP_TOKEN` sind Kalender- und Push-Endpunkte nur von `localhost` erreichbar. **Sobald der Server öffentlich läuft, `NOVA_APP_TOKEN` setzen** (langer Zufallswert) und in Nova → Einstellungen eintragen.
 - Der Service Worker cached nie `/api/…`.
 
@@ -147,6 +159,16 @@ GitHub Pages kann **nur den statischen Teil** (`dist/`). Für Grok-Bot, Google-S
 | **GitHub Pages + Node-Host** | GitHub Pages | Render/Fly/VPS | Beim Build `VITE_NOVA_API_BASE=https://<server>/` setzen und `ALLOWED_ORIGINS=https://<name>.github.io` auf dem Server. |
 | **Cloudflare Pages + Workers** | Pages | `server/worker.js` | Grok-Bot-Brücke läuft sofort (Secrets per `wrangler secret put`). Für Kalender/Push fehlen noch ein KV-Speicher statt `memoryStore`, ein Cron-Trigger für den Scheduler und ein Workers-tauglicher Push-Sender (`web-push` ist Node-only). |
 | **Vercel / Netlify Functions** | ja | Hono-Adapter | Ähnlich wie Workers: Brücke ok, für Scheduler Cron + externer Speicher nötig. |
+
+### Render (Free-Plan) – aktuelle Einrichtung
+
+`render.yaml` beschreibt den Dienst `nova-server` (Node 22, `npm ci && npm run build`, Start `node server/node.js`, Health-Check `/api/health`, Region Frankfurt).
+
+1. Render → *New → Blueprint* → Repo `moritzfischbach/nova`, Branch `main` (oder Web Service manuell mit denselben Werten).
+2. Secrets im Dashboard eintragen (stehen absichtlich nicht im Repo): `XAI_API_KEY`, `NOVA_APP_TOKEN` (`openssl rand -hex 24`), `GROKBOT_WEBHOOK_URL`, `GROKBOT_WEBHOOK_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `CALENDAR_FEED_TOKEN`, `PUBLIC_BASE_URL=https://<dienst>.onrender.com`, `ALLOWED_ORIGINS=https://moritzfischbach.github.io`.
+3. GitHub → Settings → Variables → `NOVA_API_BASE=https://<dienst>.onrender.com/` und den Pages-Workflow neu starten. Danach Gerät per Kopplungslink verbinden.
+
+**Free-Plan-Einschränkungen:** kein persistenter Speicher – `server/data/store.json` (Push-Abos, Erinnerungsplan, Google-Tokens) geht bei jedem Deploy/Neustart verloren; Nova schickt Push-Abo und Erinnerungsplan beim nächsten Öffnen erneut. Der Dienst schläft nach ~15 min ohne Anfragen ein (erste Antwort dann ~30–60 s), Erinnerungen werden im Schlaf nicht verschickt. Für zuverlässige Push-Erinnerungen später: bezahlte Instanz + Disk (Block in `render.yaml` ist auskommentiert).
 
 Für iPhone-Installation, Spracheingabe und Push ist **HTTPS** Pflicht.
 
