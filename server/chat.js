@@ -256,9 +256,7 @@ export function registerChatRoutes(app, { getConfig, fetchImpl, log = () => {} }
         controller.abort();
       },
     });
-    return new Response(stream, {
-      status: 200,
-      headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' },
-    });
+    // c.body keeps the CORS headers set by the /api middleware (a raw Response would drop them)
+    return c.body(stream, 200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' });
   });
 }

@@ -153,6 +153,14 @@ describe('POST /api/chat against mock xAI', () => {
     expect((await post(app(), { messages: [{ role: 'user', content: '' }] })).status).toBe(400);
   });
 
+  it('streaming response keeps CORS headers for allowed origins', async () => {
+    const res = await post(app({ ALLOWED_ORIGINS: 'https://moritzfischbach.github.io' }), { messages: [{ role: 'user', content: 'Hallo' }] }, { ...H, origin: 'https://moritzfischbach.github.io' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://moritzfischbach.github.io');
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    await res.text();
+  });
+
   it('health endpoint', async () => {
     expect(await (await app().request('http://nova.local/api/health')).json()).toEqual({ ok: true });
   });

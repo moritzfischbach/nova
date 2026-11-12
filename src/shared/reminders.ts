@@ -105,6 +105,10 @@ export function syncReminders(): Promise<void> {
         getAll<TodoItem>(STORES.todos),
         getAll<Goal>(STORES.goals),
       ]);
+      // Re-register this device: the free server has no persistent disk and may have forgotten it.
+      const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
+      const sub = await reg?.pushManager.getSubscription();
+      if (sub) await postJson('api/push/subscribe', { subscription: sub.toJSON(), label: isIOS() ? 'iPhone' : navigator.platform }).catch(() => undefined);
       const reminders = planReminders({ events, todos, goals });
       await postJson('api/push/reminders', { reminders }, 'PUT');
     } catch {

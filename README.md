@@ -168,7 +168,7 @@ GitHub Pages kann **nur den statischen Teil** (`dist/`). Für Grok-Bot, Google-S
 2. Secrets im Dashboard eintragen (stehen absichtlich nicht im Repo): `XAI_API_KEY`, `NOVA_APP_TOKEN` (`openssl rand -hex 24`), `GROKBOT_WEBHOOK_URL`, `GROKBOT_WEBHOOK_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `CALENDAR_FEED_TOKEN`, `PUBLIC_BASE_URL=https://<dienst>.onrender.com`, `ALLOWED_ORIGINS=https://moritzfischbach.github.io`.
 3. GitHub → Settings → Variables → `NOVA_API_BASE=https://<dienst>.onrender.com/` und den Pages-Workflow neu starten. Danach Gerät per Kopplungslink verbinden.
 
-**Free-Plan-Einschränkungen:** kein persistenter Speicher – `server/data/store.json` (Push-Abos, Erinnerungsplan, Google-Tokens) geht bei jedem Deploy/Neustart verloren; Nova schickt Push-Abo und Erinnerungsplan beim nächsten Öffnen erneut. Der Dienst schläft nach ~15 min ohne Anfragen ein (erste Antwort dann ~30–60 s), Erinnerungen werden im Schlaf nicht verschickt. Für zuverlässige Push-Erinnerungen später: bezahlte Instanz + Disk (Block in `render.yaml` ist auskommentiert).
+**Free-Plan-Einschränkungen:** kein persistenter Speicher – `server/data/store.json` (Push-Abos, Erinnerungsplan, Google-Tokens) geht bei jedem Deploy/Neustart verloren; Nova meldet Push-Abo und Erinnerungsplan bei jedem Öffnen erneut an, Google muss nach einem Neustart ggf. neu verbunden werden. Der Dienst schläft nach ~15 min ohne Anfragen ein (erste Antwort dann ~30–60 s), Erinnerungen werden im Schlaf nicht verschickt. Für zuverlässige Push-Erinnerungen später: bezahlte Instanz + Disk (Block in `render.yaml` ist auskommentiert).
 
 Für iPhone-Installation, Spracheingabe und Push ist **HTTPS** Pflicht.
 
