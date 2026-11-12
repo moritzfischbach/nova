@@ -20,6 +20,25 @@ export type StoreName = (typeof STORES)[keyof typeof STORES];
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+type ChangeListener = (store: StoreName, key: string) => void;
+const changeListeners = new Set<ChangeListener>();
+
+/** Notified after every committed write (used by the automatic backup). */
+export function onDbChange(fn: ChangeListener): () => void {
+  changeListeners.add(fn);
+  return () => changeListeners.delete(fn);
+}
+
+function emitChange(store: StoreName, key: string): void {
+  for (const fn of changeListeners) {
+    try {
+      fn(store, key);
+    } catch {
+      /* listeners must not break writes */
+    }
+  }
+}
+
 export function getDb(): Promise<IDBDatabase> {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
@@ -104,6 +123,8 @@ export async function putRecord<T>(store: StoreName, value: T): Promise<T> {
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });
+  const v = value as { id?: unknown; key?: unknown };
+  emitChange(store, String(store === 'meta' ? v.key : v.id));
   return value;
 }
 
@@ -116,6 +137,7 @@ export async function removeRecord(store: StoreName, id: string): Promise<void> 
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });
+  emitChange(store, id);
 }
 
 export async function getByIndex<T>(store: StoreName, indexName: string, value: IDBValidKey): Promise<T[]> {

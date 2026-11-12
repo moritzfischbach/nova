@@ -27,6 +27,11 @@ services:
         value: Europe/Berlin
       - key: ALLOWED_ORIGINS
         value: https://moritzfischbach.github.io
+      # E2E-encrypted backups -> private GitHub repo (durable despite the ephemeral free disk)
+      - key: NOVA_BACKUP_REPO
+        value: git@github.com:moritzfischbach/nova-backups.git
+      - key: NOVA_BACKUP_KEEP
+        value: "10"
       # --- secrets / per-deployment values (set in the dashboard, never here) ---
       - key: XAI_API_KEY
         sync: false
@@ -51,6 +56,9 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URI
+        sync: false
+      # base64 of a write deploy key for the backup repo only (ssh-ed25519)
+      - key: NOVA_BACKUP_SSH_KEY_B64
         sync: false
     # Persistent storage needs a paid instance. If you upgrade later, uncomment:
     # disk:

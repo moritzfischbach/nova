@@ -4,6 +4,7 @@ import { escapeHtml } from '../../shared/escape';
 import { getBotStatus } from '../../shared/grokbot';
 import { toast } from '../../shared/toast';
 import { renderPushSettings } from './push-settings';
+import { renderBackupSettings } from './backup-settings';
 import { deviceAuthorized, openPairingSheet, PAIR_TEXT } from '../../shared/pairing';
 import { STATIC_ONLY } from '../../shared/api';
 
@@ -15,7 +16,7 @@ export async function renderSettings(root: HTMLElement): Promise<() => void> {
         <div>
           <p class="eyebrow">Nova</p>
           <h1>Einstellungen</h1>
-          <p class="subtitle">Verbindung zum Nova-Server, Grok Bot und Mitteilungen.</p>
+          <p class="subtitle">Verbindung zum Nova-Server, Backup, Grok Bot und Mitteilungen.</p>
         </div>
       </header>
 
@@ -24,6 +25,8 @@ export async function renderSettings(root: HTMLElement): Promise<() => void> {
         <p class="muted" data-testid="pair-state"></p>
         <button type="button" class="btn btn-primary" data-testid="settings-pair-start" hidden>${PAIR_TEXT.button}</button>
       </section>
+
+      <div data-backup><section class="settings-group" data-testid="backup-settings-loading"><h2>Backup &amp; Sync</h2><p class="muted">Lade …</p></section></div>
 
       <section class="settings-group">
         <h2>Grok Bot</h2>
@@ -64,8 +67,17 @@ export async function renderSettings(root: HTMLElement): Promise<() => void> {
   };
   pairBtn.addEventListener('click', () => openPairingSheet(() => void refreshPair()));
   void refreshPair();
+  let disposeBackup: (() => void) | undefined;
+  let gone = false;
+  void (async () => {
+    const paired = STATIC_ONLY || !status.reachable || !status.tokenRequired ? undefined : await deviceAuthorized();
+    if (gone) return;
+    disposeBackup = await renderBackupSettings(root.querySelector('[data-backup]') as HTMLElement, { paired });
+  })();
   await renderPushSettings(root.querySelector('[data-push]') as HTMLElement);
   return () => {
+    gone = true;
+    disposeBackup?.();
     root.innerHTML = '';
   };
 }

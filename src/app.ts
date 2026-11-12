@@ -1,3 +1,4 @@
+import { startAutoBackup } from './shared/backup/backup';
 import { icons } from './shared/icons';
 import { stopAllListening } from './shared/voice';
 import { installBotQueueFlush } from './shared/grokbot';
@@ -104,6 +105,12 @@ export async function startApp(host: HTMLElement): Promise<void> {
 
   resumePendingPairing(() => void render());
   installBotQueueFlush((n) => toast(`${n} Grok-Bot-Anfrage(n) nachträglich gesendet.`, 'success'));
+  startAutoBackup();
+  const restored = sessionStorage.getItem('nova.restoreDone');
+  if (restored) {
+    sessionStorage.removeItem('nova.restoreDone');
+    toast(restored, 'success');
+  }
   onRouteChange(() => {
     void render();
   });

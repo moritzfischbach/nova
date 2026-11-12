@@ -9,6 +9,7 @@ import webpush from 'web-push';
 import { createApp } from './app.js';
 import { startScheduler } from './scheduler.js';
 import { fileStore } from './store.js';
+import { dirBackupStore, gitBackupStore } from './backup/store.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -37,7 +38,16 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   startScheduler({ store, send: push.send, intervalMs: Number(process.env.SCHEDULER_INTERVAL_MS ?? 30_000), log });
 }
 
-const app = createApp({ getConfig: () => process.env, log, store, push });
+const backupKeep = Math.max(1, Math.min(50, Number(process.env.NOVA_BACKUP_KEEP ?? 10) || 10));
+// durable: private GitHub repo via deploy key (Render free has no persistent disk); local fallback: server/data/backups
+const backups =
+  process.env.NOVA_BACKUP_REPO && process.env.NOVA_BACKUP_SSH_KEY_B64
+    ? gitBackupStore({ repo: process.env.NOVA_BACKUP_REPO, keyB64: process.env.NOVA_BACKUP_SSH_KEY_B64, keep: backupKeep, log })
+    : process.env.NOVA_BACKUP_DISABLED === '1'
+      ? undefined
+      : dirBackupStore(process.env.NOVA_BACKUP_DIR ?? join(root, 'server', 'data', 'backups'), backupKeep);
+
+const app = createApp({ getConfig: () => process.env, log, store, push, backups, backupKeep });
 
 const distDir = process.env.NOVA_DIST_DIR ?? join(root, 'dist');
 const distRel = relative(process.cwd(), distDir) || '.';
@@ -48,5 +58,5 @@ const port = Number(process.env.PORT ?? 8787);
 const hostname = process.env.HOST ?? '0.0.0.0';
 serve({ fetch: app.fetch, port, hostname }, (info) => {
   const configured = Boolean(process.env.GROKBOT_WEBHOOK_URL && process.env.GROKBOT_WEBHOOK_KEY);
-  console.log(`[nova-server] http://localhost:${info.port}  (Grok Bot ${configured ? 'konfiguriert' : 'nicht konfiguriert'}, Push ${push ? 'aktiv' : 'aus'}, Google ${process.env.GOOGLE_CLIENT_ID ? 'konfiguriert' : 'nicht konfiguriert'}, Chat ${process.env.XAI_API_KEY ? 'konfiguriert' : 'nicht konfiguriert'})`);
+  console.log(`[nova-server] http://localhost:${info.port}  (Grok Bot ${configured ? 'konfiguriert' : 'nicht konfiguriert'}, Push ${push ? 'aktiv' : 'aus'}, Google ${process.env.GOOGLE_CLIENT_ID ? 'konfiguriert' : 'nicht konfiguriert'}, Chat ${process.env.XAI_API_KEY ? 'konfiguriert' : 'nicht konfiguriert'}, Backup ${backups?.kind ?? 'aus'})`);
 });

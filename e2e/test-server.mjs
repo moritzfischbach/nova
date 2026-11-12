@@ -10,6 +10,7 @@ import { startTestPushService } from '../server/testing/test-push-service.js';
 import { createMockXai } from '../server/testing/mock-xai.js';
 
 const PORT = Number(process.env.E2E_PORT ?? 8797);
+const BACKUP_DIR = mkdtempSync(join(tmpdir(), 'nova-e2e-backups-'));
 const CONTROL_PORT = Number(process.env.E2E_CONTROL_PORT ?? 8798);
 const WEBHOOK_KEY = 'e2e-SECRET-webhook-key-123456';
 
@@ -42,6 +43,7 @@ Object.assign(process.env, {
   HOST: '127.0.0.1',
   NOVA_ENV_FILE: '/nonexistent',
   NOVA_DATA_FILE: join(mkdtempSync(join(tmpdir(), 'nova-e2e-')), 'store.json'),
+  NOVA_BACKUP_DIR: BACKUP_DIR,
   GROKBOT_WEBHOOK_URL: `http://127.0.0.1:${webhook.address().port}/automations/webhook/e2e`,
   GROKBOT_WEBHOOK_KEY: WEBHOOK_KEY,
   RATE_LIMIT_PER_MINUTE: '100',
@@ -68,7 +70,8 @@ export const E2E_ADMIN_TOKEN = 'e2e-admin-token-0123456789abcdef';
   const { serve } = await import('@hono/node-server');
   const { serveStatic } = await import('@hono/node-server/serve-static');
   const { createApp } = await import('../server/app.js');
-  const locked = createApp({ getConfig: () => ({ ...process.env, NOVA_APP_TOKEN: E2E_ADMIN_TOKEN, NOVA_DEVICE_SECRET: 'e2e-device-secret-0123456789' }) });
+  const { memoryBackupStore } = await import('../server/backup/store.js');
+  const locked = createApp({ getConfig: () => ({ ...process.env, NOVA_APP_TOKEN: E2E_ADMIN_TOKEN, NOVA_DEVICE_SECRET: 'e2e-device-secret-0123456789' }), backups: memoryBackupStore(10) });
   locked.use('/*', serveStatic({ root: 'dist' }));
   locked.get('*', serveStatic({ path: 'dist/index.html' }));
   serve({ fetch: locked.fetch, port: Number(process.env.E2E_LOCKED_PORT ?? 8799), hostname: '127.0.0.1' });
@@ -85,6 +88,17 @@ createServer(async (req, res) => {
   if (url.pathname === '/hook-mode') {
     hookMode = url.searchParams.get('mode') ?? 'ok';
     return json({ hookMode });
+  }
+  if (url.pathname === '/backups/reset') {
+    const { rmSync, mkdirSync } = await import('node:fs');
+    rmSync(BACKUP_DIR, { recursive: true, force: true });
+    mkdirSync(BACKUP_DIR, { recursive: true });
+    return json({ ok: true });
+  }
+  if (url.pathname === '/backups/raw') {
+    const { existsSync, readFileSync, readdirSync } = await import('node:fs');
+    const dir = join(BACKUP_DIR, 'versions');
+    return json(existsSync(dir) ? readdirSync(dir).map((f) => readFileSync(join(dir, f), 'utf8')) : []);
   }
   if (url.pathname === '/xai') return json(xai.requests.map((r) => r.body ?? r));
   if (url.pathname === '/device') return json(device.sub);

@@ -5,6 +5,7 @@ import { registerCalendarRoutes } from './calendar.js';
 import { registerPushRoutes } from './push.js';
 import { registerChatRoutes } from './chat.js';
 import { registerPairRoutes } from './pair.js';
+import { registerBackupRoutes } from './backup/routes.js';
 import { hasAppAccess } from './auth.js';
 import { memoryStore } from './store.js';
 
@@ -37,9 +38,9 @@ export function createRateLimiter(perMinute) {
 }
 
 /**
- * @param {{ getConfig: (c: any) => BotConfig, log?: (msg: string) => void, fetchImpl?: typeof fetch, store?: import('./store.js').Store, push?: any }} options
+ * @param {{ getConfig: (c: any) => BotConfig, log?: (msg: string) => void, fetchImpl?: typeof fetch, store?: import('./store.js').Store, push?: any, backups?: import('./backup/store.js').BackupStore, backupKeep?: number }} options
  */
-export function createApp({ getConfig, log = () => {}, fetchImpl, store = memoryStore(), push }) {
+export function createApp({ getConfig, log = () => {}, fetchImpl, store = memoryStore(), push, backups, backupKeep = 10 }) {
   const app = new Hono();
   /** @type {Map<number, ReturnType<typeof createRateLimiter>>} */
   const limiters = new Map();
@@ -194,6 +195,7 @@ export function createApp({ getConfig, log = () => {}, fetchImpl, store = memory
   registerPushRoutes(app, { getConfig, store, log, push });
   registerChatRoutes(app, { getConfig, fetchImpl, log });
   registerPairRoutes(app, { getConfig, log });
+  registerBackupRoutes(app, { getConfig, backups, log, keep: backupKeep });
 
   app.all('/api/*', (c) => c.json({ ok: false, error: 'not_found' }, 404));
   app.onError((err, c) => {
