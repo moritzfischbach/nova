@@ -60,5 +60,11 @@ describe('Morgenplaner', () => {
     expect(p).toContain('Lesen (Täglich, gern um 21:00)');
     expect(p).not.toContain('Wasser');
     expect(p).toContain('termin_anlegen');
+    expect(p).toContain('07:00 Kaffee');
+  });
+  it('plans from now on when the morning is already over', () => {
+    const p = buildPlanPrompt({ date: T, weekday: 'Donnerstag', wakeTime: '06:45', now: '11:20', events: [], todos: [], habits: [], routine: [{ id: 'a', title: 'Kaffee', time: '07:00' }] });
+    expect(p).toContain('es ist schon 11:20 Uhr, also bitte erst ab jetzt planen');
+    expect(p).not.toContain('Kaffee');
   });
 });

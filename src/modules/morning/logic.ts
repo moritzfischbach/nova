@@ -95,13 +95,20 @@ export interface PlanInput {
   todos: TodoItem[];
   habits: Habit[];
   routine: RoutineItem[];
+  /** current time HH:MM (plan only from now on when later than the wake time) */
+  now?: string;
 }
 
 /** The message sent to Nova Chat for "Tag planen mit Nova". */
 export function buildPlanPrompt(p: PlanInput): string {
   const lines: string[] = [];
-  lines.push(`Plane bitte meinen Tag (${p.weekday}, ${p.date}) in Zeitblöcken. Ich stehe um ${p.wakeTime} Uhr auf.`);
-  if (p.routine.length) lines.push(`Morgenroutine: ${sortRoutine(p.routine).map((r) => `${r.time ? `${r.time} ` : ''}${r.title}`).join('; ')}.`);
+  const late = p.now && p.now > p.wakeTime;
+  lines.push(
+    late
+      ? `Plane bitte meinen Tag (${p.weekday}, ${p.date}) in Zeitblöcken – es ist schon ${p.now} Uhr, also bitte erst ab jetzt planen.`
+      : `Plane bitte meinen Tag (${p.weekday}, ${p.date}) in Zeitblöcken. Ich stehe um ${p.wakeTime} Uhr auf.`,
+  );
+  if (p.routine.length && !late) lines.push(`Morgenroutine: ${sortRoutine(p.routine).map((r) => `${r.time ? `${r.time} ` : ''}${r.title}`).join('; ')}.`);
   lines.push(
     p.events.length
       ? `Feste Termine: ${p.events.map((e) => `${e.allDay ? 'ganztägig' : `${e.start ?? ''}${e.end ? `–${e.end}` : ''}`} ${e.title}${e.location ? ` (${e.location})` : ''}`).join('; ')}.`

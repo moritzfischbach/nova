@@ -161,6 +161,7 @@ export async function renderMorning(root: HTMLElement): Promise<() => void> {
         todos: due,
         habits: hToday,
         routine,
+        now: new Date().toTimeString().slice(0, 5),
       });
       sessionStorage.setItem(AUTO_SEND_KEY, prompt);
       navigate('chat');
