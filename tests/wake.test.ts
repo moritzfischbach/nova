@@ -107,7 +107,7 @@ describe('Serien, Wochenansicht, Quoten', () => {
     expect(motivation(false, 0, T).length).toBeGreaterThan(10);
   });
   it('chat context knows wake and punctuality stats', () => {
-    const config: MorningConfig = { ...base, work, wakeGoal: { goal: '06:30', gradual: true, start: '07:10', startDate: '2026-11-01', stepMinutes: 10, everyDays: 7 } };
+    const config: MorningConfig = { ...base, work, dailyQuiz: true, wakeGoal: { goal: '06:30', gradual: true, start: '07:10', startDate: '2026-11-01', stepMinutes: 10, everyDays: 7 } };
     const lines = wakeContextLines(config, { ...logs, [T]: log(T, { wokeAt: '07:15', early: false, focus: 'Angebot' }) }, T);
     expect(lines[0]).toBe('Aufstehen: Ziel heute 07:00 (Endziel 06:30, 3 Schritte à 10 Min.); heute um 07:15 aufgestanden (15 Min. zu spät); letzte 14 Tage 2/4 pünktlich auf, Serie 0 Tage. Fokus heute: Angebot.');
     expect(lines[1]).toBe('Arbeit: heute Beginn 08:30, 25 Min. Weg, losgehen 08:05; pünktlich 2/3 Arbeitstage (14 Tage), Serie 1.');
@@ -171,7 +171,7 @@ describe('Wach-Quiz', () => {
 
 describe('Mitteilungen: Wach-Quiz, Losgehen, Check-in', () => {
   const now = new Date(2026, 10, 12, 5, 0);
-  const config: MorningConfig = { ...base, work, wakeGoal: { goal: '06:30', gradual: true, start: '07:10', startDate: '2026-11-01', stepMinutes: 10, everyDays: 7 } };
+  const config: MorningConfig = { ...base, work, dailyQuiz: true, wakeGoal: { goal: '06:30', gradual: true, start: '07:10', startDate: '2026-11-01', stepMinutes: 10, everyDays: 7 } };
   it('wake push at the day\'s target, deep-linking to the quiz; skipped once the quiz is done', () => {
     const r = planReminders({ events: [], todos: [], goals: [], morning: config }, now);
     expect(r.find((x) => x.id === `morning:${T}`)).toMatchObject({ at: new Date(2026, 10, 12, 7, 0).toISOString(), url: '#/morgen?quiz=1' });

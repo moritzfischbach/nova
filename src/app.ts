@@ -20,7 +20,7 @@ import type { RouteName } from './types';
  * optional ein Tab. Grok Bot und Einstellungen sind über die Übersicht erreichbar.
  */
 const TABS: { route: RouteName; label: string; icon: string; testid: string; also?: RouteName[]; center?: boolean }[] = [
-  { route: 'overview', label: 'Nova', icon: icons.home, testid: 'tab-overview', also: ['grok', 'settings', 'morning', 'habits'] },
+  { route: 'overview', label: 'Nova', icon: icons.home, testid: 'tab-overview', also: ['grok', 'settings', 'morning', 'habits', 'morningPlan'] },
   { route: 'todos', label: 'Aufgaben', icon: icons.check, testid: 'tab-todos' },
   { route: 'chat', label: 'Chat', icon: logoSvg, testid: 'tab-chat', center: true },
   { route: 'calendar', label: 'Kalender', icon: icons.calendar, testid: 'tab-calendar' },
@@ -47,6 +47,7 @@ const renderers: Record<RouteName, (root: HTMLElement) => Promise<() => void>> =
   settings: renderSettings,
   morning: renderMorning,
   habits: renderHabits,
+  morningPlan: (root) => import('./modules/morning/plan-quiz').then((m) => m.renderPlanQuiz(root)),
   chat: (root) => import('./modules/chat/chat').then((m) => m.renderChat(root)),
 };
 

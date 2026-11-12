@@ -15,6 +15,7 @@ async function setup(page: Page) {
   await page.getByTestId('work-copy').click();
   await page.getByTestId('work-lead').fill('10');
   await page.getByTestId('work-checkin').fill('18:30');
+  await page.getByTestId('wake-daily-quiz').check();
   await page.getByTestId('wake-save').click();
   await expect(page.getByTestId('wake-target')).toHaveText('07:10 Uhr');
 }

@@ -51,3 +51,20 @@ export async function markLinkedHabit(which: 'wake' | 'work', date: string, done
   const { setHabitDone } = await import('../habits/repo');
   await setHabitDone(LINKED_HABITS[which].id, date, done);
 }
+
+// ---------- Morgenplan-Quiz ----------
+import type { PlanAnswers } from './planner';
+
+export interface SavedPlan {
+  answers: PlanAnswers;
+  compact: boolean;
+  appliedAt: string;
+}
+const PLAN_KEY = 'morning.plan';
+
+export async function getSavedPlan(): Promise<SavedPlan | undefined> {
+  return getMeta<SavedPlan>(PLAN_KEY);
+}
+export async function savePlan(plan: SavedPlan): Promise<void> {
+  await setMeta(PLAN_KEY, plan);
+}

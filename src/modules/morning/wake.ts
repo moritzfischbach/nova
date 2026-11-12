@@ -44,7 +44,8 @@ export function normalizeWork(raw: unknown): WorkConfig | undefined {
   const days: Record<string, WorkDay> = {};
   for (const [k, v] of Object.entries(w.days)) {
     const travel = Math.round(Number(v?.travel));
-    if (/^[1-7]$/.test(k) && time(v?.start) && travel >= 0 && travel <= 300) days[k] = { start: v.start, travel };
+    const buffer = Math.round(Number(v?.buffer));
+    if (/^[1-7]$/.test(k) && time(v?.start) && travel >= 0 && travel <= 300) days[k] = buffer > 0 && buffer <= 120 ? { start: v.start, travel, buffer } : { start: v.start, travel };
   }
   if (!Object.keys(days).length) return undefined;
   const lead = Math.round(Number(w.leaveLead));
@@ -52,7 +53,19 @@ export function normalizeWork(raw: unknown): WorkConfig | undefined {
 }
 
 /** Target wake time for a day: gradual plan (x min earlier every n days, never past the goal) or the goal; else the normal wake time. */
-export function targetWakeFor(config: Pick<MorningConfig, 'wakeTime' | 'wakeGoal'>, date: string): string {
+export function targetWakeFor(config: Pick<MorningConfig, 'wakeTime' | 'wakeGoal' | 'wakeByDay'>, date: string): string {
+  return fromMin(toMin(baseTargetWake(config, date)) + dayOffset(config, date));
+}
+
+/** Minutes a weekday differs from the reference plan (Morgenplan-Quiz with different work starts). */
+export function dayOffset(config: Pick<MorningConfig, 'wakeTime' | 'wakeGoal' | 'wakeByDay'>, date: string): number {
+  const own = config.wakeByDay?.[String(isoWeekdayOf(date))];
+  if (!own) return 0;
+  const ref = config.wakeGoal?.goal ?? config.wakeTime;
+  return toMin(own) - toMin(ref);
+}
+
+function baseTargetWake(config: Pick<MorningConfig, 'wakeTime' | 'wakeGoal'>, date: string): string {
   const g = config.wakeGoal;
   if (!g) return config.wakeTime;
   if (!g.gradual) return g.goal;
@@ -74,7 +87,7 @@ export interface WakePlanInfo {
 export function wakePlanInfo(config: Pick<MorningConfig, 'wakeTime' | 'wakeGoal'>, date: string): WakePlanInfo | undefined {
   const g = config.wakeGoal;
   if (!g) return undefined;
-  const target = targetWakeFor(config, date);
+  const target = baseTargetWake(config, date);
   const reached = toMin(target) <= toMin(g.goal);
   if (!g.gradual || reached) return { target, goal: g.goal, reached, stepsLeft: 0 };
   const days = Math.max(0, Math.round((parseLocalDate(date).getTime() - parseLocalDate(g.startDate).getTime()) / 86_400_000));
@@ -83,7 +96,7 @@ export function wakePlanInfo(config: Pick<MorningConfig, 'wakeTime' | 'wakeGoal'
     target,
     goal: g.goal,
     reached,
-    next: { date: nextDate, time: targetWakeFor(config, nextDate) },
+    next: { date: nextDate, time: baseTargetWake(config, nextDate) },
     stepsLeft: Math.ceil((toMin(target) - toMin(g.goal)) / g.stepMinutes),
   };
 }
@@ -103,7 +116,7 @@ export function workDayOf(work: WorkConfig | undefined, date: string): WorkDay |
 
 export function leaveTimeFor(work: WorkConfig | undefined, date: string): string | undefined {
   const d = workDayOf(work, date);
-  return d ? fromMin(toMin(d.start) - d.travel) : undefined;
+  return d ? fromMin(toMin(d.start) - d.travel - (d.buffer ?? 0)) : undefined;
 }
 
 export const isPunctual = (p: Punctuality | undefined) => p === 'ja' || p === 'knapp';
@@ -241,7 +254,7 @@ export function wakeContextLines(config: MorningConfig, logs: Record<string, Wak
   if (config.work) {
     const w = workDayOf(config.work, today);
     lines.push(
-      `Arbeit: ${w ? `heute Beginn ${w.start}, ${w.travel} Min. Weg, losgehen ${leaveTimeFor(config.work, today)}` : 'heute kein Arbeitstag'}; pünktlich ${s.punctual.hit}/${s.punctual.of} Arbeitstage (14 Tage), Serie ${s.punctualStreak}.`,
+      `Arbeit: ${w ? `heute Beginn ${w.start}, ${w.travel} Min. Weg${w.buffer ? ` + ${w.buffer} Min. Puffer` : ''}, losgehen ${leaveTimeFor(config.work, today)}` : 'heute kein Arbeitstag'}; pünktlich ${s.punctual.hit}/${s.punctual.of} Arbeitstage (14 Tage), Serie ${s.punctualStreak}.`,
     );
   }
   return lines;

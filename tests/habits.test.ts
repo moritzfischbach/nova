@@ -120,7 +120,7 @@ describe('Erinnerungen für Gewohnheiten und Morgen', () => {
       now,
     );
     const morning = r.filter((x) => x.id.startsWith('morning:'));
-    expect(morning[0]).toMatchObject({ id: 'morning:2026-11-12', at: new Date(2026, 10, 12, 6, 30).toISOString(), url: '#/morgen?quiz=1' });
+    expect(morning[0]).toMatchObject({ id: 'morning:2026-11-12', at: new Date(2026, 10, 12, 6, 30).toISOString(), url: '#/morgen' });
     expect(morning).toHaveLength(15);
     const hab = r.filter((x) => x.id.startsWith('habit:'));
     expect(hab[0].id).toBe('habit:h:2026-11-13'); // today already done, next is Friday

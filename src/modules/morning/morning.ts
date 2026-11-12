@@ -18,7 +18,8 @@ import { habitRow, wireHabitToggles } from '../habits/habits';
 import { isDone } from '../habits/logic';
 import { listTodoLists, listTodos, toggleTodo } from '../todos/repo';
 import { budgetStatus, buildPlanPrompt, dueTodos, habitsToday, routineProgress, sortRoutine, toggleRoutineCheck } from './logic';
-import { getMorningConfig, getWakeLogs, saveMorningConfig } from './repo';
+import { getMorningConfig, getSavedPlan, getWakeLogs, saveMorningConfig } from './repo';
+import { dayOffset, fromMin, leaveTimeFor, targetWakeFor, toMin, workDayOf } from './wake';
 import { openQuiz, wakeCardsHtml, wakeSectionHtml, wireWake } from './wake-ui';
 import { routeParams } from '../../router';
 import type { WakeLog } from '../../types';
@@ -48,7 +49,24 @@ export async function renderMorning(root: HTMLElement): Promise<() => void> {
     const hToday = habitsToday(habits, today);
     const hDone = hToday.filter((h) => isDone(h, today)).length;
     const listName = new Map(lists.map((l) => [l.id, l.name]));
-    const routine = sortRoutine(config.routine);
+    const savedPlan = await getSavedPlan();
+    const shift = dayOffset(config, today);
+    const routine = sortRoutine(config.routine.map((r) => (shift && r.time ? { ...r, time: fromMin(toMin(r.time) + shift) } : r)));
+    const workToday = workDayOf(config.work, today);
+    const leaveToday = leaveTimeFor(config.work, today);
+    const planCard = savedPlan
+      ? `<div class="plan-card" data-testid="plan-card">
+          <div class="plan-card-times">
+            <span><small>Aufstehen</small><strong data-testid="plan-card-wake">${escapeHtml(targetWakeFor(config, today))}</strong></span>
+            ${workToday && leaveToday ? `<span><small>Losfahren</small><strong data-testid="plan-card-leave">${escapeHtml(leaveToday)}</strong></span><span><small>Ankunft</small><strong>${escapeHtml(fromMin(toMin(leaveToday) + workToday.travel))}</strong></span>` : '<span><small>Heute</small><strong>frei</strong></span>'}
+          </div>
+          <a href="#/morgenplan?neu=1" class="text-btn" data-testid="plan-redo">Quiz wiederholen</a>
+        </div>`
+      : `<a href="#/morgenplan?neu=1" class="plan-cta" data-testid="plan-start">
+          <span class="plan-cta-icon" aria-hidden="true">🌅</span>
+          <span class="plan-cta-copy"><span class="dash-label">Morgenplan-Quiz · 2 Minuten</span><strong>Erstell deinen perfekten Morgen</strong><span>6 kurze Fragen – Nova rechnet aus, wann du aufstehen solltest und was vor dem Losfahren alles reinpasst.</span></span>
+          <span class="quiz-go">Los</span>
+        </a>`;
     const rp = routineProgress(config, today);
     const checked = new Set(config.checks[today] ?? []);
     const saving = goals.filter((g) => g.status === 'offen' && g.kind === 'spar').slice(0, 3);
@@ -68,9 +86,11 @@ export async function renderMorning(root: HTMLElement): Promise<() => void> {
           <p class="lede" data-testid="morning-summary">Heute: ${parts.join(' · ')}.</p>
           <div class="morning-actions">
             <button type="button" class="btn btn-primary" data-action="plan" data-testid="morning-plan">${icons.sparkle} Tag planen mit Nova</button>
-            <button type="button" class="btn btn-ghost" data-action="settings" data-testid="morning-settings">${icons.bell} ${escapeHtml(config.wakeTime)} Uhr${config.remind ? '' : ' · aus'}</button>
+            <button type="button" class="btn btn-ghost" data-action="settings" data-testid="morning-settings">${icons.bell} ${escapeHtml(config.wakeTime)}${config.remind ? ' Uhr' : ' · aus'}</button>
           </div>
         </header>
+
+        ${planCard}
 
         <div class="wake-cards">${wakeCardsHtml(config, logs, today, forcedCheckin)}</div>
 
@@ -291,7 +311,7 @@ export async function renderMorning(root: HTMLElement): Promise<() => void> {
   wireHabitToggles(root, refresh);
   wireWake(root, () => ({ config, logs }), refresh);
   await refresh();
-  if (params.get('quiz') && !logs[todayISO()]?.quizAt) openQuiz(config, logs, refresh);
+  if (params.get('quiz') && config.dailyQuiz && !logs[todayISO()]?.quizAt) openQuiz(config, logs, refresh);
   return () => {
     root.innerHTML = '';
   };

@@ -12,6 +12,7 @@ export const ROUTE_HASHES: Record<RouteName, string> = {
   chat: '#/chat',
   morning: '#/morgen',
   habits: '#/gewohnheiten',
+  morningPlan: '#/morgenplan',
 };
 
 function hashPath(): string {

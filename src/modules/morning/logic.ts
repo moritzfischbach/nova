@@ -26,6 +26,8 @@ export function normalizeConfig(raw: Partial<MorningConfig> | undefined): Mornin
     wakeGoal: normalizeWakeGoal(c.wakeGoal),
     work: normalizeWork(c.work),
     linkHabits: c.linkHabits === true ? true : undefined,
+    dailyQuiz: c.dailyQuiz === true ? true : undefined,
+    wakeByDay: c.wakeByDay && typeof c.wakeByDay === 'object' ? Object.fromEntries(Object.entries(c.wakeByDay).filter(([k, v]) => /^[1-7]$/.test(k) && time(v))) : undefined,
   };
 }
 

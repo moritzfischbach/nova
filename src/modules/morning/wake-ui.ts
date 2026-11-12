@@ -45,7 +45,23 @@ export function wakeCardsHtml(config: MorningConfig, logs: Record<string, WakeLo
   const log = logs[today];
   const target = targetWakeFor(config, today);
   const streak = wakeStreak(logs, today);
-  const quiz = log?.quizAt
+  const simple = !config.dailyQuiz
+    ? log?.wokeAt
+      ? `<div class="quiz-card done" data-testid="wake-done">
+        <span class="quiz-icon">${log.early ? '✓' : '·'}</span>
+        <span class="quiz-copy"><span class="dash-label">Aufgestanden · ${escapeHtml(log.wokeAt)} Uhr</span>
+        <strong>${log.early ? 'Pünktlich aufgestanden' : 'Heute etwas später'}</strong>
+        <span>Ziel ${escapeHtml(log.target ?? target)}${streak ? ` · 🔥 ${streak} ${streak === 1 ? 'Tag' : 'Tage'}` : ''}</span></span>
+      </div>`
+      : `<button type="button" class="quiz-card" data-action="wake-now" data-testid="wake-now">
+        <span class="quiz-icon">☀️</span>
+        <span class="quiz-copy"><span class="dash-label">Ziel heute: ${escapeHtml(target)} Uhr</span>
+        <strong>Bin wach</strong>
+        <span>Ein Tipp – Nova merkt sich, wann du aufgestanden bist${streak ? ` · 🔥 ${streak} ${streak === 1 ? 'Tag' : 'Tage'} früh auf` : ''}</span></span>
+        <span class="quiz-go">✓</span>
+      </button>`
+    : undefined;
+  const quiz = simple ?? (log?.quizAt
     ? `<button type="button" class="quiz-card done" data-action="quiz-result" data-testid="quiz-card">
         <span class="quiz-icon">${log.early ? '✓' : '·'}</span>
         <span class="quiz-copy"><span class="dash-label">Wach-Quiz erledigt · ${escapeHtml(log.quizAt)} Uhr</span>
@@ -58,7 +74,7 @@ export function wakeCardsHtml(config: MorningConfig, logs: Record<string, WakeLo
         <strong>Werd wach in 60 Sekunden</strong>
         <span>Ziel heute: ${escapeHtml(target)} Uhr aufstehen${streak ? ` · 🔥 ${streak} ${streak === 1 ? 'Tag' : 'Tage'} früh auf` : ''}</span></span>
         <span class="quiz-go">Start</span>
-      </button>`;
+      </button>`);
   const pending = forcedCheckin && forcedCheckin <= today && !logs[forcedCheckin]?.punctual && workDayOf(config.work, forcedCheckin) ? forcedCheckin : pendingCheckin(logs, config.work, today, nowHHMM());
   const checkin = pending
     ? `<div class="checkin-card" data-testid="checkin-card" data-date="${pending}">
@@ -94,14 +110,14 @@ export function wakeSectionHtml(config: MorningConfig, logs: Record<string, Wake
           <strong data-testid="wake-target">${escapeHtml(targetWakeFor(config, today))} Uhr</strong>
           <span class="muted" data-testid="wake-plan">${goalLine}</span>
           ${weekRow(days.map((d) => wakeCell(logs, d, today)), 'wake-week')}
-          <span class="muted small">${stats.early.of ? `${stats.early.hit} von ${stats.early.of} Tagen pünktlich auf (14 Tage)` : 'Noch keine Daten – starte morgen mit dem Wach-Quiz.'}</span>
+          <span class="muted small">${stats.early.of ? `${stats.early.hit} von ${stats.early.of} Tagen pünktlich auf (14 Tage)` : (config.dailyQuiz ? 'Noch keine Daten – starte morgen mit dem Wach-Quiz.' : 'Noch keine Daten – tippe morgens auf „Bin wach“.')}</span>
         </button>
         <button type="button" class="wake-tile" data-action="${config.work ? 'wake-stats' : 'wake-settings'}" data-testid="work-tile">
           <span class="wake-head"><span class="wake-emoji">🕗</span><span class="dash-label">Pünktlich zur Arbeit</span><span class="wake-streak${stats.punctualStreak ? ' hot' : ''}">${stats.punctualStreak ? `🔥 ${stats.punctualStreak}` : '–'}</span></span>
           ${
             config.work
               ? work
-                ? `<strong data-testid="leave-time">Losgehen um ${escapeHtml(leave!)}</strong><span class="muted">Arbeit ${escapeHtml(work.start)} · ${work.travel} Min. Weg${config.work.leaveRemind ? ` · Push ${config.work.leaveLead} Min. vorher` : ''}</span>`
+                ? `<strong data-testid="leave-time">Losgehen um ${escapeHtml(leave!)}</strong><span class="muted">Arbeit ${escapeHtml(work.start)} · ${work.travel} Min. Weg${work.buffer ? ` + ${work.buffer} Puffer` : ''}${config.work.leaveRemind ? ` · Push ${config.work.leaveLead} Min. vorher` : ''}</span>`
                 : `<strong data-testid="leave-time">Heute frei</strong><span class="muted">Kein Arbeitstag eingetragen</span>`
               : `<strong data-testid="leave-time">Arbeitszeiten eintragen</strong><span class="muted">Dann sagt Nova dir, wann du losmusst.</span>`
           }
@@ -124,6 +140,17 @@ export function wireWake(root: HTMLElement, get: () => { config: MorningConfig; 
       if (l) openResult(config, logs, l, refresh);
     } else if (action === 'wake-settings') openWakeSettings(config, refresh);
     else if (action === 'wake-stats') openWakeStats(config, logs);
+    else if (action === 'wake-now') {
+      const today = todayISO();
+      const wokeAt = nowHHMM();
+      const target = targetWakeFor(config, today);
+      const early = isEarly(wokeAt, target);
+      await saveWakeLog(today, { wokeAt, target, early });
+      await markLinkedHabit('wake', today, early, config);
+      toast(early ? `Guten Morgen! ${wokeAt} – pünktlich auf.` : `Guten Morgen! Notiert: ${wokeAt} (Ziel ${target}).`, 'success');
+      void syncReminders();
+      await refresh();
+    }
     const ci = t.closest<HTMLElement>('[data-checkin]');
     if (ci) {
       const date = ci.closest<HTMLElement>('[data-date]')!.dataset.date!;
@@ -314,7 +341,8 @@ export function openWakeSettings(config: MorningConfig, onSave: () => Promise<vo
       <label class="field"><span>Minuten vorher</span><input type="number" min="0" max="120" name="lead" value="${w?.leaveLead ?? 10}" data-testid="work-lead" /></label>
       <label class="field"><span>Abends fragen „Warst du pünktlich?“</span><input type="time" name="checkin" value="${escapeHtml(w ? (w.checkinTime ?? '') : '18:30')}" data-testid="work-checkin" /></label>
     </div>
-    <label class="check-field"><input type="checkbox" name="link" ${config.linkHabits ?? true ? 'checked' : ''} data-testid="wake-link" /> Als Gewohnheiten „Früh aufstehen“ und „Pünktlich bei der Arbeit“ führen</label>`;
+    <label class="check-field"><input type="checkbox" name="link" ${config.linkHabits ?? true ? 'checked' : ''} data-testid="wake-link" /> Als Gewohnheiten „Früh aufstehen“ und „Pünktlich bei der Arbeit“ führen</label>
+    <label class="check-field"><input type="checkbox" name="dailyQuiz" ${config.dailyQuiz ? 'checked' : ''} data-testid="wake-daily-quiz" /> Tägliches Wach-Quiz (3 kurze Fragen zum Wachwerden)</label>`;
   const syncGradual = () => {
     const on = (form.querySelector('[name="gradual"]') as HTMLInputElement).checked;
     form.querySelectorAll<HTMLElement>('[data-gradual]').forEach((el) => (el.hidden = !on));
@@ -354,13 +382,14 @@ export function openWakeSettings(config: MorningConfig, onSave: () => Promise<vo
       const start = s(`start${i}`);
       const travel = Math.round(Number(s(`travel${i}`)));
       if (!start || !(travel >= 0)) return toast(`Bitte Beginn und Weg für ${WEEKDAY_SHORT[i - 1]} angeben.`, 'error');
-      days[String(i)] = { start, travel };
+      const buffer = w?.days[String(i)]?.buffer;
+      days[String(i)] = buffer ? { start, travel, buffer } : { start, travel };
     }
     const work: WorkConfig | undefined = Object.keys(days).length
       ? { days, leaveRemind: data.get('leaveRemind') === 'on', leaveLead: Math.max(0, Math.round(Number(s('lead')) || 0)), checkinTime: s('checkin') || undefined }
       : undefined;
     const linkHabits = data.get('link') === 'on';
-    const next = await saveMorningConfig({ ...config, wakeGoal, work, linkHabits, wakeTime: wakeGoal && !wakeGoal.gradual ? wakeGoal.goal : config.wakeTime });
+    const next = await saveMorningConfig({ ...config, wakeGoal, work, linkHabits, dailyQuiz: data.get('dailyQuiz') === 'on', wakeTime: wakeGoal && !wakeGoal.gradual ? wakeGoal.goal : config.wakeTime });
     if (linkHabits) await ensureLinkedHabits(next);
     sheet.close();
     toast('Gespeichert. Nova plant Aufstehen und Losgehen ein.', 'success');

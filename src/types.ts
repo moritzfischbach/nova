@@ -81,7 +81,7 @@ export interface Transaction {
   createdAt: string;
 }
 
-export type RouteName = 'overview' | 'todos' | 'calendar' | 'finance' | 'goals' | 'grok' | 'settings' | 'chat' | 'morning' | 'habits';
+export type RouteName = 'overview' | 'todos' | 'calendar' | 'finance' | 'goals' | 'grok' | 'settings' | 'chat' | 'morning' | 'habits' | 'morningPlan';
 
 export type BotModule = 'todos' | 'kalender' | 'finanzen' | 'ziele' | 'allgemein';
 export type BotRequestStatus = 'wartend' | 'gesendet' | 'fehler';
@@ -211,6 +211,10 @@ export interface MorningConfig {
   work?: WorkConfig;
   /** keep the habits „Früh aufstehen“ / „Pünktlich bei der Arbeit“ in sync */
   linkHabits?: boolean;
+  /** optional daily brain quiz (off by default) */
+  dailyQuiz?: boolean;
+  /** wake time per ISO weekday from the Morgenplan-Quiz (different work starts) */
+  wakeByDay?: Record<string, string>;
   /** routine items checked per day: { '2026-11-12': ['id1'] } (only recent days kept) */
   checks: Record<string, string[]>;
 }
@@ -231,6 +235,8 @@ export interface WakeGoal {
 export interface WorkDay {
   start: string; // HH:MM
   travel: number; // minutes
+  /** extra minutes for traffic / parking */
+  buffer?: number;
 }
 
 export interface WorkConfig {

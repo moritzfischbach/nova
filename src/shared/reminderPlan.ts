@@ -86,8 +86,15 @@ export function planReminders(
   for (let i = 0; i <= dailyDays; i += 1) {
     const date = addDays(today, i);
     const m = input.morning;
-    if (m?.remind && !input.wakeLogs?.[date]?.quizAt) {
-      push({ id: `morning:${date}`, title: 'Guten Morgen ☀️', body: 'Zeit fürs Wach-Quiz – 3 kurze Fragen, dann steht dein Tag.', url: '#/morgen?quiz=1' }, localInstant(date, targetWakeFor(m, date)));
+    const wl = input.wakeLogs?.[date];
+    if (m?.remind && !(m.dailyQuiz ? wl?.quizAt : wl?.wokeAt)) {
+      const leave = leaveTimeFor(m.work, date);
+      const body = m.dailyQuiz
+        ? 'Zeit fürs Wach-Quiz – 3 kurze Fragen, dann steht dein Tag.'
+        : leave
+          ? `Zeit aufzustehen – dein Morgenplan steht, um ${leave} geht's los.`
+          : 'Zeit aufzustehen – dein Morgenplan wartet.';
+      push({ id: `morning:${date}`, title: 'Guten Morgen ☀️', body, url: m.dailyQuiz ? '#/morgen?quiz=1' : '#/morgen' }, localInstant(date, targetWakeFor(m, date)));
     }
     const work = workDayOf(m?.work, date);
     if (m?.work && work) {
