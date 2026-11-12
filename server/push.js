@@ -81,7 +81,7 @@ export function registerPushRoutes(app, { getConfig, store, log = () => {}, push
         keep.push(s);
       } catch (err) {
         if (err?.statusCode !== 404 && err?.statusCode !== 410) keep.push(s);
-        log(`push test failed ${err?.statusCode ?? ''}`);
+        log(`push test failed ${err?.statusCode ?? ''} ${String(err?.body ?? '').slice(0, 120)}`);
       }
     }
     await store.set('push.subscriptions', keep);

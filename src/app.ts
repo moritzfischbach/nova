@@ -2,7 +2,7 @@ import { icons } from './shared/icons';
 import { stopAllListening } from './shared/voice';
 import { installBotQueueFlush } from './shared/grokbot';
 import { toast } from './shared/toast';
-import { consumePairingLink } from './shared/pairing';
+import { consumePairingLink, resumePendingPairing } from './shared/pairing';
 import { renderOverview } from './modules/overview/overview';
 import { renderTodos } from './modules/todos/todos';
 import { renderFinance } from './modules/finance/finance';
@@ -97,6 +97,7 @@ export async function startApp(host: HTMLElement): Promise<void> {
     view.scrollTop = 0;
   };
 
+  resumePendingPairing(() => void render());
   installBotQueueFlush((n) => toast(`${n} Grok-Bot-Anfrage(n) nachträglich gesendet.`, 'success'));
   onRouteChange(() => {
     void render();

@@ -1,5 +1,5 @@
 /* Nova service worker – runtime caching, scope-relative */
-const CACHE = 'nova-v5';
+const CACHE = 'nova-v6';
 
 function scopeURL(path) {
   return new URL(path, self.registration.scope).toString();

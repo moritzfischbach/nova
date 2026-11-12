@@ -102,6 +102,7 @@ export function registerPairRoutes(app, { getConfig, log = () => {}, now = () =>
     if (!p) return c.json({ ok: true, status: 'expired' });
     if (!p.approved) return c.json({ ok: true, status: 'pending', expires_in: Math.max(0, Math.round((p.expiresAt - now()) / 1000)) });
     // deliver once, then forget the code
+    log('pair token delivered');
     pending.delete(p.code);
     byPoll.delete(p.pollId);
     return c.json({ ok: true, status: 'approved', token: p.token });

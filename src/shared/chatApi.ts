@@ -13,7 +13,8 @@ export interface ChatStatus {
 export async function getChatStatus(): Promise<ChatStatus> {
   if (STATIC_ONLY) return { staticOnly: true, reachable: false, configured: false };
   try {
-    const res = await fetchWithTimeout(apiUrl('api/chat/status'), { headers: apiHeaders(false) }, 6000);
+    // generous timeout: the free Render instance needs up to ~1 min to wake up
+    const res = await fetchWithTimeout(apiUrl('api/chat/status'), { headers: apiHeaders(false) }, 45000);
     if (!res.ok) return { reachable: false, configured: false };
     const data = await res.json();
     return { reachable: true, configured: Boolean(data.configured), model: data.model, tokenRequired: Boolean(data.token_required), authorized: data.authorized === undefined ? true : Boolean(data.authorized) };
@@ -69,11 +70,44 @@ export async function streamChat(
     res = await fetch(apiUrl('api/chat'), { method: 'POST', headers: apiHeaders(), body: JSON.stringify(body), signal });
   } catch (err) {
     if ((err as Error)?.name === 'AbortError') throw new ChatError('aborted', 'Abgebrochen.');
-    throw new ChatError('offline', navigator.onLine === false ? 'Keine Verbindung. Bitte später noch einmal senden.' : 'Der Nova-Server ist nicht erreichbar.');
+    const detail = (err as Error)?.message ? ` (${(err as Error).message})` : '';
+    throw new ChatError(
+      'offline',
+      navigator.onLine === false
+        ? 'Keine Internetverbindung. Bitte später noch einmal senden.'
+        : `Der Nova-Server ist nicht erreichbar${detail}. Er wacht nach einer Pause bis zu einer Minute lang auf – bitte gleich noch einmal senden.`,
+    );
   }
-  if (!res.ok || !res.body) {
+  if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new ChatError(data.error ?? `http_${res.status}`, data.message ?? `Fehler ${res.status}`);
+    const code = data.error ?? `http_${res.status}`;
+    const message =
+      code === 'unauthorized'
+        ? 'Dieses Gerät ist nicht (mehr) mit dem Nova-Server gekoppelt. Tippe auf „Gerät koppeln“.'
+        : code === 'rate_limited'
+          ? 'Zu viele Nachrichten in kurzer Zeit. Bitte kurz warten.'
+          : `${data.message ?? 'Unbekannter Fehler.'} (HTTP ${res.status})`;
+    throw new ChatError(code, message);
+  }
+  if (!res.body) {
+    // very old WebKit without streaming bodies: read everything at once
+    const text = await res.text();
+    let finishReason = 'stop';
+    let failure: ChatError | undefined;
+    parseSseFrames(`${text}\n\n`, (data) => {
+      try {
+        const ev = JSON.parse(data);
+        if (ev.type === 'start') handlers.onStart?.(ev.model ?? '');
+        else if (ev.type === 'delta' && ev.text) handlers.onDelta(ev.text);
+        else if (ev.type === 'tool_calls' && ev.calls) handlers.onToolCalls?.(ev.calls);
+        else if (ev.type === 'done') finishReason = ev.finish_reason ?? 'stop';
+        else if (ev.type === 'error') failure = new ChatError(ev.error ?? 'stream_error', ev.message ?? 'Fehler.');
+      } catch {
+        /* ignore */
+      }
+    });
+    if (failure) throw failure;
+    return { finishReason };
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -86,7 +120,7 @@ export async function streamChat(
       chunk = await reader.read();
     } catch (err) {
       if ((err as Error)?.name === 'AbortError') throw new ChatError('aborted', 'Abgebrochen.');
-      throw new ChatError('stream_error', 'Die Verbindung ist abgebrochen.');
+      throw new ChatError('stream_error', `Die Verbindung ist während der Antwort abgebrochen${(err as Error)?.message ? ` (${(err as Error).message})` : ''}. Bitte noch einmal senden.`);
     }
     if (chunk.done) break;
     buffer = parseSseFrames(buffer + decoder.decode(chunk.value, { stream: true }), (data) => {

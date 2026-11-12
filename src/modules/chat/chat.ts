@@ -32,7 +32,7 @@ const STATUS_TEXT: Record<string, string> = {
 
 function statusNote(status: ChatStatus): string {
   if (status.staticOnly) return 'Nova Chat braucht den Nova-Server und einen xAI-Schlüssel, kommt nach der Server-Einrichtung.';
-  if (!status.reachable) return 'Der Nova-Server ist gerade nicht erreichbar. Bitte später noch einmal versuchen.';
+  if (!status.reachable) return 'Der Nova-Server ist gerade nicht erreichbar. Nach einer Pause braucht er bis zu einer Minute zum Aufwachen – Nova versucht es automatisch weiter.';
   if (!status.configured) return 'Auf dem Nova-Server fehlt noch der xAI-Schlüssel (XAI_API_KEY).';
   if (status.tokenRequired && !status.authorized) return getAppToken() ? 'Dieses Gerät ist nicht mehr mit dem Nova-Server gekoppelt. Bitte neu koppeln.' : 'Dieses Gerät ist noch nicht mit dem Nova-Server gekoppelt.';
   return '';
@@ -90,7 +90,7 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
   const updateControls = () => {
     const enabled = canSend();
     const streaming = busy && Boolean(abort);
-    sendBtn.disabled = streaming ? false : !enabled || !input.value.trim();
+    sendBtn.disabled = streaming ? false : Boolean(status.staticOnly) || !input.value.trim();
     sendBtn.classList.toggle('stop', streaming);
     sendBtn.innerHTML = streaming ? icons.stop : icons.send;
     sendBtn.setAttribute('aria-label', streaming ? 'Antwort stoppen' : 'Senden');
@@ -129,7 +129,7 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
       <div class="msg assistant${streaming ? ' streaming' : ''}" data-testid="msg-assistant" data-id="${m.id}">
         ${body ? `<div class="bubble md" data-testid="msg-text">${body}</div>` : ''}
         ${(m.toolCalls ?? []).map((c) => toolChip(m, c)).join('')}
-        ${m.error ? `<div class="msg-error" data-testid="msg-error">${escapeHtml(m.error)} <button type="button" class="text-btn" data-retry="${m.id}" data-testid="chat-retry">Erneut versuchen</button></div>` : ''}
+        ${m.error ? `<div class="msg-error" data-testid="msg-error" data-code="${escapeHtml(m.errorCode ?? '')}">${escapeHtml(m.error)} ${m.errorCode === 'unauthorized' ? `<button type="button" class="text-btn" data-pair data-testid="error-pair">${PAIR_TEXT.button}</button>` : ''}<button type="button" class="text-btn" data-retry="${m.id}" data-testid="chat-retry">Erneut versuchen</button></div>` : ''}
       </div>`;
   };
 
@@ -197,7 +197,11 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
       );
       if (!assistant.content && !assistant.toolCalls?.length) assistant.error = 'Keine Antwort erhalten.';
     } catch (err) {
-      if (!(err instanceof ChatError && err.code === 'aborted')) assistant.error = err instanceof Error ? err.message : 'Fehler.';
+      if (!(err instanceof ChatError && err.code === 'aborted')) {
+        assistant.error = err instanceof Error ? err.message : 'Fehler.';
+        assistant.errorCode = err instanceof ChatError ? err.code : 'unknown';
+        if (assistant.errorCode === 'unauthorized') void refreshStatus();
+      }
     } finally {
       cancelAnimationFrame(raf);
       raf = 0;
@@ -227,7 +231,13 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
 
   async function send(text: string): Promise<void> {
     const value = text.trim();
-    if (!value || !canSend()) return;
+    if (!value) return;
+    if (busy) return;
+    if (!canSend()) {
+      toast(statusNote(status) || 'Senden ist gerade nicht möglich.', 'error');
+      if (!status.reachable) void refreshStatus();
+      return;
+    }
     closeOpenCalls();
     conv.messages.push(message('user', value));
     input.value = '';
@@ -306,6 +316,10 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
     if (confirm || decline) {
       const [m, c] = (confirm ?? decline)!.dataset[confirm ? 'confirm' : 'decline']!.split('|');
       void resolveCall(m, c, Boolean(confirm));
+      return;
+    }
+    if (t.closest('[data-pair]')) {
+      openPairingSheet(() => void refreshStatus());
       return;
     }
     const retry = t.closest<HTMLButtonElement>('[data-retry]');
@@ -393,9 +407,17 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
 
   renderLog();
   scrollDown(true);
+  let retryTimer = 0;
+  // eslint-disable-next-line prefer-const
   const refreshStatus = async () => {
+    clearTimeout(retryTimer);
+    if (!status.reachable && !statusEl.innerHTML) {
+      statusEl.hidden = false;
+      statusEl.innerHTML = `<p class="bot-status server-note" data-testid="chat-connecting">Verbinde mit dem Nova-Server …</p>`;
+    }
     status = await getChatStatus();
     if (disposed) return;
+    if (!status.reachable && !status.staticOnly) retryTimer = window.setTimeout(() => void refreshStatus(), 10000);
     const note = statusNote(status);
     const needsPair = status.reachable && status.tokenRequired && !status.authorized;
     statusEl.hidden = !note;
@@ -408,6 +430,10 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
     if (status.model) sub.textContent = `Grok · ${status.model}`;
     updateControls();
   };
+  const onVisible = () => {
+    if (document.visibilityState === 'visible' && (!status.reachable || (status.tokenRequired && !status.authorized))) void refreshStatus();
+  };
+  document.addEventListener('visibilitychange', onVisible);
   await refreshStatus();
   if (disposed) return () => undefined;
   const pre = new URLSearchParams(location.hash.split('?')[1] ?? '').get('q');
@@ -418,6 +444,8 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
 
   return () => {
     disposed = true;
+    clearTimeout(retryTimer);
+    document.removeEventListener('visibilitychange', onVisible);
     abort?.abort();
     form.remove();
     root.innerHTML = '';

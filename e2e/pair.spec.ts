@@ -51,3 +51,25 @@ test('settings offer pairing on an unpaired device; expired/invalid token asks t
   await expect(page.getByTestId('chat-note')).toContainText('nicht mehr mit dem Nova-Server gekoppelt');
   await expect(page.getByTestId('pair-start')).toBeVisible();
 });
+
+test('pairing survives an app reload (iOS may reload the home-screen app while the user is in the Grok app)', async ({ page }) => {
+  await page.goto(`${LOCKED}/#/chat`);
+  await page.getByTestId('pair-start').click();
+  const code = (await page.getByTestId('pair-code').innerText()).trim();
+  await expect(page.getByTestId('pair-sheet')).toContainText('Home-Bildschirm-App und Safari speichern getrennt');
+  await page.reload();
+  await expect(page.getByTestId('pair-code')).toHaveText(code);
+  const out = execFileSync('node', ['scripts/approve-pair.mjs', code, LOCKED], { env: { ...process.env, NOVA_APP_TOKEN: ADMIN, NOVA_SECRETS_DIR: '/nonexistent' } }).toString();
+  expect(out.trim()).toBe('Erfolg: Kopplung bestätigt.');
+  await expect(page.getByTestId('pair-sheet')).toHaveCount(0, { timeout: 15000 });
+  await expect(page.getByTestId('chat-note')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('nova.pairPending'))).toBeNull();
+});
+
+test('sending while unpaired explains why instead of failing silently', async ({ page }) => {
+  await page.goto(`${LOCKED}/#/chat`);
+  await expect(page.getByTestId('pair-start')).toBeVisible();
+  await page.getByTestId('chat-input').fill('Hallo?');
+  await page.getByTestId('chat-send').click();
+  await expect(page.locator('.toast').last()).toContainText('noch nicht mit dem Nova-Server gekoppelt');
+});

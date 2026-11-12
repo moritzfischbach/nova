@@ -61,6 +61,7 @@ export function createApp({ getConfig, log = () => {}, fetchImpl, store = memory
     const origin = c.req.header('origin');
     const allowed = allowedOrigins(cfg, c.req.url);
     if (origin && !allowed.includes(origin)) {
+      log(`${c.req.method} ${new URL(c.req.url).pathname} -> 403 forbidden origin ${origin}`);
       return c.json({ ok: false, error: 'forbidden_origin', message: 'Diese Herkunft ist nicht erlaubt.' }, 403);
     }
     if (origin) {
@@ -73,6 +74,8 @@ export function createApp({ getConfig, log = () => {}, fetchImpl, store = memory
     c.header('Cache-Control', 'no-store');
     if (c.req.method === 'OPTIONS') return c.body(null, 204);
     await next();
+    // diagnostics without secrets: rejected API calls (auth, rate limit, validation)
+    if (c.res.status >= 400) log(`${c.req.method} ${new URL(c.req.url).pathname} -> ${c.res.status}${origin ? ` origin=${origin}` : ''}`);
   });
 
   // health check for hosting (Render etc.) – no secrets, no config details

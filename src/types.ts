@@ -162,6 +162,7 @@ export interface ChatMessage {
   toolCalls?: ChatToolCall[];
   toolCallId?: string;
   error?: string;
+  errorCode?: string;
   model?: string;
 }
 
@@ -171,4 +172,37 @@ export interface ChatConversation {
   messages: ChatMessage[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ---------- Angewohnheiten ----------
+/** Weekdays 1 = Montag … 7 = Sonntag (ISO). */
+export type HabitFrequency = { type: 'daily' } | { type: 'weekdays'; days: number[] } | { type: 'perWeek'; times: number };
+
+export interface Habit {
+  id: string;
+  name: string;
+  emoji: string;
+  frequency: HabitFrequency;
+  reminderTime?: string; // HH:MM
+  color: string;
+  /** ISO dates (YYYY-MM-DD) on which the habit was done */
+  completions: string[];
+  archived?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------- Morgenplaner ----------
+export interface RoutineItem {
+  id: string;
+  title: string;
+  time?: string; // HH:MM
+}
+
+export interface MorningConfig {
+  wakeTime: string; // HH:MM
+  remind: boolean;
+  routine: RoutineItem[];
+  /** routine items checked per day: { '2026-11-12': ['id1'] } (only recent days kept) */
+  checks: Record<string, string[]>;
 }
