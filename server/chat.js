@@ -1,6 +1,6 @@
 // Nova Chat: POST /api/chat → xAI chat completions (streaming), normalized SSE back to the browser.
 // The xAI key never leaves the server; the upstream body is never echoed verbatim.
-import { requireAppAuth, clientIp } from './auth.js';
+import { requireAppAuth, clientIp, hasAppAccess } from './auth.js';
 import { createRateLimiter } from './app.js';
 import { CHAT_TOOLS, TOOL_NAMES } from './chat-tools.js';
 
@@ -120,15 +120,15 @@ const HINTS = {
 export function registerChatRoutes(app, { getConfig, fetchImpl, log = () => {} }) {
   const limiters = new Map();
 
-  app.get('/api/chat/status', (c) => {
+  app.get('/api/chat/status', async (c) => {
     const cfg = getConfig(c);
-    return c.json({ ok: true, configured: chatConfigured(cfg), model: cfg.XAI_MODEL || DEFAULT_XAI_MODEL, token_required: Boolean(cfg.NOVA_APP_TOKEN) });
+    return c.json({ ok: true, configured: chatConfigured(cfg), model: cfg.XAI_MODEL || DEFAULT_XAI_MODEL, token_required: Boolean(cfg.NOVA_APP_TOKEN), authorized: await hasAppAccess(c, cfg) });
   });
 
   app.post('/api/chat', async (c) => {
     const cfg = getConfig(c);
     // costs money: token required once the server is public; without token only loopback (local mode)
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     const perMinute = Math.max(1, Number(cfg.CHAT_RATE_LIMIT_PER_MINUTE ?? 20) || 20);
     if (!limiters.has(perMinute)) limiters.set(perMinute, createRateLimiter(perMinute));

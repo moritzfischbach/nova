@@ -7,6 +7,7 @@ export interface ChatStatus {
   configured: boolean;
   model?: string;
   tokenRequired?: boolean;
+  authorized?: boolean;
 }
 
 export async function getChatStatus(): Promise<ChatStatus> {
@@ -15,7 +16,7 @@ export async function getChatStatus(): Promise<ChatStatus> {
     const res = await fetchWithTimeout(apiUrl('api/chat/status'), { headers: apiHeaders(false) }, 6000);
     if (!res.ok) return { reachable: false, configured: false };
     const data = await res.json();
-    return { reachable: true, configured: Boolean(data.configured), model: data.model, tokenRequired: Boolean(data.token_required) };
+    return { reachable: true, configured: Boolean(data.configured), model: data.model, tokenRequired: Boolean(data.token_required), authorized: data.authorized === undefined ? true : Boolean(data.authorized) };
   } catch {
     return { reachable: false, configured: false };
   }

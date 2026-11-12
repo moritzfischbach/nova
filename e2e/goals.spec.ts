@@ -11,7 +11,10 @@ test('Sparziel anlegen, per Finanzplaner „50 Euro Sparen Urlaub“ füllen', a
   await expect(page.getByTestId('goal-item')).toContainText('0,00 € von 1.000,00 €');
 
   await page.getByTestId('tab-finance').click();
+  await expect(page.getByTestId('subnav-finance')).toHaveClass(/active/);
+  await expect(page.getByTestId('month-chart')).toBeVisible();
   await page.getByTestId('finance-input').fill('50 Euro Sparen Urlaub');
+  await expect(page.getByTestId('finance-input')).toHaveValue('50 Euro Sparen Urlaub');
   await page.getByTestId('finance-submit').click();
   await expect(page.getByTestId('tx-item').first()).toContainText('Urlaub');
 

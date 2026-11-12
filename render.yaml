@@ -32,6 +32,8 @@ services:
         sync: false
       - key: NOVA_APP_TOKEN
         sync: false
+      - key: NOVA_DEVICE_SECRET
+        sync: false
       - key: GROKBOT_WEBHOOK_URL
         sync: false
       - key: GROKBOT_WEBHOOK_KEY

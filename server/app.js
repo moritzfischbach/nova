@@ -4,6 +4,8 @@ import { isValidWebhookUrl, safeEqual, validateBotRequest } from './validate.js'
 import { registerCalendarRoutes } from './calendar.js';
 import { registerPushRoutes } from './push.js';
 import { registerChatRoutes } from './chat.js';
+import { registerPairRoutes } from './pair.js';
+import { hasAppAccess } from './auth.js';
 import { memoryStore } from './store.js';
 
 /**
@@ -88,7 +90,7 @@ export function createApp({ getConfig, log = () => {}, fetchImpl, store = memory
   app.post('/api/bot', async (c) => {
     const cfg = getConfig(c);
 
-    if (cfg.NOVA_APP_TOKEN && !safeEqual(c.req.header('x-nova-token') ?? '', cfg.NOVA_APP_TOKEN)) {
+    if (!(await hasAppAccess(c, cfg))) {
       return c.json({ ok: false, error: 'unauthorized', message: 'Zugangscode fehlt oder ist falsch.' }, 401);
     }
 
@@ -188,6 +190,7 @@ export function createApp({ getConfig, log = () => {}, fetchImpl, store = memory
   registerCalendarRoutes(app, { getConfig, store, fetchImpl, log });
   registerPushRoutes(app, { getConfig, store, log, push });
   registerChatRoutes(app, { getConfig, fetchImpl, log });
+  registerPairRoutes(app, { getConfig, log });
 
   app.all('/api/*', (c) => c.json({ ok: false, error: 'not_found' }, 404));
   app.onError((err, c) => {

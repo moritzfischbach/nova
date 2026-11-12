@@ -1,5 +1,6 @@
 import logoSvg from '../../assets/logo.svg?raw';
 import { getAppToken } from '../../shared/api';
+import { openPairingSheet, PAIR_TEXT } from '../../shared/pairing';
 import { ChatError, getChatStatus, streamChat, type ChatStatus } from '../../shared/chatApi';
 import { escapeHtml } from '../../shared/escape';
 import { icons } from '../../shared/icons';
@@ -33,7 +34,7 @@ function statusNote(status: ChatStatus): string {
   if (status.staticOnly) return 'Nova Chat braucht den Nova-Server und einen xAI-Schlüssel, kommt nach der Server-Einrichtung.';
   if (!status.reachable) return 'Der Nova-Server ist gerade nicht erreichbar. Bitte später noch einmal versuchen.';
   if (!status.configured) return 'Auf dem Nova-Server fehlt noch der xAI-Schlüssel (XAI_API_KEY).';
-  if (status.tokenRequired && !getAppToken()) return 'Dieses Gerät ist noch nicht mit dem Nova-Server gekoppelt. Öffne den Kopplungslink oder trag den Zugangscode unter Einstellungen ein.';
+  if (status.tokenRequired && !status.authorized) return getAppToken() ? 'Dieses Gerät ist nicht mehr mit dem Nova-Server gekoppelt. Bitte neu koppeln.' : 'Dieses Gerät ist noch nicht mit dem Nova-Server gekoppelt.';
   return '';
 }
 
@@ -84,7 +85,7 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
   (root.closest('.shell') ?? document.body).append(form);
   const scroller = (root.closest('.view') as HTMLElement | null) ?? document.scrollingElement ?? document.documentElement;
 
-  const canSend = () => !busy && status.reachable && status.configured && !(status.tokenRequired && !getAppToken());
+  const canSend = () => !busy && status.reachable && status.configured && !(status.tokenRequired && !status.authorized);
 
   const updateControls = () => {
     const enabled = canSend();
@@ -392,13 +393,23 @@ export async function renderChat(root: HTMLElement): Promise<() => void> {
 
   renderLog();
   scrollDown(true);
-  status = await getChatStatus();
+  const refreshStatus = async () => {
+    status = await getChatStatus();
+    if (disposed) return;
+    const note = statusNote(status);
+    const needsPair = status.reachable && status.tokenRequired && !status.authorized;
+    statusEl.hidden = !note;
+    statusEl.innerHTML = note
+      ? `<div class="bot-status warn server-note chat-note-box" data-testid="chat-note"><span>${escapeHtml(note)}</span>${
+          needsPair ? `<button type="button" class="btn btn-primary pair-btn" data-testid="pair-start">${PAIR_TEXT.button}</button>` : ''
+        }</div>`
+      : '';
+    statusEl.querySelector('[data-testid="pair-start"]')?.addEventListener('click', () => openPairingSheet(() => void refreshStatus()));
+    if (status.model) sub.textContent = `Grok · ${status.model}`;
+    updateControls();
+  };
+  await refreshStatus();
   if (disposed) return () => undefined;
-  const note = statusNote(status);
-  statusEl.hidden = !note;
-  statusEl.innerHTML = note ? `<p class="bot-status warn server-note" data-testid="chat-note">${escapeHtml(note)}</p>` : '';
-  if (status.model) sub.textContent = `Grok · ${status.model}`;
-  updateControls();
   const pre = new URLSearchParams(location.hash.split('?')[1] ?? '').get('q');
   if (pre) {
     input.value = pre;

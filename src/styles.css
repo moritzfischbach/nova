@@ -734,3 +734,20 @@ h1 {
 .conv-row { display: flex; align-items: center; gap: 8px; }
 .conv-open { flex: 1; text-align: left; background: none; border: 0; color: inherit; display: grid; gap: 2px; padding: 4px 0; }
 .conv-row.active .item-title { color: var(--champagne-strong); }
+
+/* ---------- Device pairing ---------- */
+.chat-note-box { display: grid; gap: 12px; }
+.chat-note-box .pair-btn { justify-self: start; padding: 10px 16px; font-size: 14px; }
+.pair-sheet { display: grid; gap: 14px; text-align: center; padding: 6px 0 4px; }
+.pair-intro { margin: 0; color: var(--text-2); }
+.pair-code {
+  margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 40px; font-weight: 700;
+  letter-spacing: 0.16em; color: var(--champagne-strong); padding: 18px 10px; border-radius: 18px;
+  background: var(--champagne-soft); border: 1px solid var(--champagne-line); box-shadow: var(--glow);
+  user-select: all;
+}
+.pair-howto { margin: 0; color: var(--text); line-height: 1.55; font-size: 15px; }
+.pair-status, .pair-wait { margin: 0; color: var(--muted); font-size: 13.5px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.pair-spinner { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--champagne-line); border-top-color: var(--champagne); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+[hidden] { display: none !important; }

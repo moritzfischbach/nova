@@ -59,7 +59,7 @@ export function registerCalendarRoutes(app, { getConfig, store, fetchImpl, log =
 
   app.get('/api/calendar/status', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     const g = googleCfg(cfg, c.req.url);
     const tokens = await store.get('google.tokens');
@@ -79,7 +79,7 @@ export function registerCalendarRoutes(app, { getConfig, store, fetchImpl, log =
 
   app.get('/api/calendar/google/connect', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg, { allowQueryToken: true });
+    const denied = await requireAppAuth(c, cfg, { allowQueryToken: true });
     if (denied) return denied;
     const g = googleCfg(cfg, c.req.url);
     if (!isConfigured(g)) return c.json({ ok: false, error: 'not_configured', message: 'GOOGLE_CLIENT_ID und GOOGLE_CLIENT_SECRET fehlen.' }, 503);
@@ -136,7 +136,7 @@ export function registerCalendarRoutes(app, { getConfig, store, fetchImpl, log =
 
   app.post('/api/calendar/google/disconnect', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     await store.delete('google.tokens');
     await store.delete('google.syncToken');
@@ -146,7 +146,7 @@ export function registerCalendarRoutes(app, { getConfig, store, fetchImpl, log =
 
   app.post('/api/calendar/google/sync', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     const g = googleCfg(cfg, c.req.url);
     if (!isConfigured(g)) return c.json({ ok: false, error: 'not_configured', message: 'Google ist auf dem Server nicht eingerichtet.' }, 503);
@@ -259,7 +259,7 @@ export function registerCalendarRoutes(app, { getConfig, store, fetchImpl, log =
   // ICS subscription feed (read-only, e.g. Apple Kalender "Kalenderabonnement")
   app.put('/api/calendar/feed', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     if (!cfg.CALENDAR_FEED_TOKEN) return c.json({ ok: false, error: 'not_configured', message: 'CALENDAR_FEED_TOKEN fehlt auf dem Server.' }, 503);
     const body = await c.req.json().catch(() => null);

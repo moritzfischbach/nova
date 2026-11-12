@@ -4,6 +4,8 @@ import { escapeHtml } from '../../shared/escape';
 import { getBotStatus } from '../../shared/grokbot';
 import { toast } from '../../shared/toast';
 import { renderPushSettings } from './push-settings';
+import { deviceAuthorized, openPairingSheet, PAIR_TEXT } from '../../shared/pairing';
+import { STATIC_ONLY } from '../../shared/api';
 
 export async function renderSettings(root: HTMLElement): Promise<() => void> {
   const status = await getBotStatus();
@@ -16,6 +18,12 @@ export async function renderSettings(root: HTMLElement): Promise<() => void> {
           <p class="subtitle">Verbindung zum Nova-Server, Grok Bot und Mitteilungen.</p>
         </div>
       </header>
+
+      <section class="settings-group" data-pair-section hidden>
+        <h2>Dieses Gerät</h2>
+        <p class="muted" data-testid="pair-state"></p>
+        <button type="button" class="btn btn-primary" data-testid="settings-pair-start" hidden>${PAIR_TEXT.button}</button>
+      </section>
 
       <section class="settings-group">
         <h2>Grok Bot</h2>
@@ -43,6 +51,19 @@ export async function renderSettings(root: HTMLElement): Promise<() => void> {
     setAppToken((root.querySelector('[data-testid="app-token"]') as HTMLInputElement).value.trim());
     toast('Zugangscode gespeichert.', 'success');
   });
+  const pairSection = root.querySelector('[data-pair-section]') as HTMLElement;
+  const pairState = root.querySelector('[data-testid="pair-state"]') as HTMLElement;
+  const pairBtn = root.querySelector('[data-testid="settings-pair-start"]') as HTMLButtonElement;
+  const refreshPair = async () => {
+    if (STATIC_ONLY || !status.reachable || !status.tokenRequired) return;
+    const ok = await deviceAuthorized();
+    if (ok === undefined) return;
+    pairSection.hidden = false;
+    pairState.textContent = ok ? 'Mit dem Nova-Server gekoppelt.' : 'Noch nicht mit dem Nova-Server gekoppelt.';
+    pairBtn.hidden = ok;
+  };
+  pairBtn.addEventListener('click', () => openPairingSheet(() => void refreshPair()));
+  void refreshPair();
   await renderPushSettings(root.querySelector('[data-push]') as HTMLElement);
   return () => {
     root.innerHTML = '';

@@ -62,6 +62,18 @@ pushAgentForTests?.(pushSvc.agent);
 const { runTick } = await import('../server/scheduler.js');
 const { fileStore } = await import('../server/store.js');
 
+// Second instance with NOVA_APP_TOKEN (public-server mode) for the pairing flow.
+export const E2E_ADMIN_TOKEN = 'e2e-admin-token-0123456789abcdef';
+{
+  const { serve } = await import('@hono/node-server');
+  const { serveStatic } = await import('@hono/node-server/serve-static');
+  const { createApp } = await import('../server/app.js');
+  const locked = createApp({ getConfig: () => ({ ...process.env, NOVA_APP_TOKEN: E2E_ADMIN_TOKEN, NOVA_DEVICE_SECRET: 'e2e-device-secret-0123456789' }) });
+  locked.use('/*', serveStatic({ root: 'dist' }));
+  locked.get('*', serveStatic({ path: 'dist/index.html' }));
+  serve({ fetch: locked.fetch, port: Number(process.env.E2E_LOCKED_PORT ?? 8799), hostname: '127.0.0.1' });
+}
+
 createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const json = (d) => {

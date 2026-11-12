@@ -31,7 +31,7 @@ export function registerPushRoutes(app, { getConfig, store, log = () => {}, push
 
   app.post('/api/push/subscribe', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     const body = await c.req.json().catch(() => null);
     const sub = body?.subscription;
@@ -45,7 +45,7 @@ export function registerPushRoutes(app, { getConfig, store, log = () => {}, push
 
   app.post('/api/push/unsubscribe', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     const body = await c.req.json().catch(() => null);
     const subs = ((await store.get('push.subscriptions')) ?? []).filter((s) => s.endpoint !== body?.endpoint);
@@ -55,7 +55,7 @@ export function registerPushRoutes(app, { getConfig, store, log = () => {}, push
 
   app.put('/api/push/reminders', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     const body = await c.req.json().catch(() => null);
     const incoming = sanitizeReminders(body?.reminders);
@@ -66,7 +66,7 @@ export function registerPushRoutes(app, { getConfig, store, log = () => {}, push
 
   app.post('/api/push/test', async (c) => {
     const cfg = getConfig(c);
-    const denied = requireAppAuth(c, cfg);
+    const denied = await requireAppAuth(c, cfg);
     if (denied) return denied;
     if (!push || !cfg.VAPID_PUBLIC_KEY) return c.json({ ok: false, error: 'not_configured', message: 'VAPID-Schlüssel fehlen auf dem Server (npm run gen:vapid).' }, 503);
     const subs = (await store.get('push.subscriptions')) ?? [];
