@@ -18,15 +18,23 @@ import { habitRow, wireHabitToggles } from '../habits/habits';
 import { isDone } from '../habits/logic';
 import { listTodoLists, listTodos, toggleTodo } from '../todos/repo';
 import { budgetStatus, buildPlanPrompt, dueTodos, habitsToday, routineProgress, sortRoutine, toggleRoutineCheck } from './logic';
-import { getMorningConfig, saveMorningConfig } from './repo';
+import { getMorningConfig, getWakeLogs, saveMorningConfig } from './repo';
+import { openQuiz, wakeCardsHtml, wakeSectionHtml, wireWake } from './wake-ui';
+import { routeParams } from '../../router';
+import type { WakeLog } from '../../types';
 
 export const AUTO_SEND_KEY = 'nova.chatAutoSend';
 
 export async function renderMorning(root: HTMLElement): Promise<() => void> {
   let config = await getMorningConfig();
+  let logs: Record<string, WakeLog> = await getWakeLogs();
+  const params = routeParams();
+  const forcedCheckin = params.get('checkin') ?? undefined;
 
   async function refresh(): Promise<void> {
     const today = todayISO();
+    config = await getMorningConfig();
+    logs = await getWakeLogs();
     const [instances, todos, lists, habits, goals, month] = await Promise.all([
       upcomingInstances(today, 1, 30),
       listTodos(),
@@ -64,6 +72,8 @@ export async function renderMorning(root: HTMLElement): Promise<() => void> {
           </div>
         </header>
 
+        <div class="wake-cards">${wakeCardsHtml(config, logs, today, forcedCheckin)}</div>
+
         <section>
           <div class="section-head">
             <h2>Morgenroutine <span class="count" data-testid="routine-progress">${rp.done}/${rp.total}</span></h2>
@@ -86,6 +96,8 @@ export async function renderMorning(root: HTMLElement): Promise<() => void> {
             }
           </ul>
         </section>
+
+        ${wakeSectionHtml(config, logs, today)}
 
         <section>
           <div class="section-head"><h2>Termine heute</h2><a href="#/kalender" class="text-btn">Kalender</a></div>
@@ -277,7 +289,9 @@ export async function renderMorning(root: HTMLElement): Promise<() => void> {
   }
 
   wireHabitToggles(root, refresh);
+  wireWake(root, () => ({ config, logs }), refresh);
   await refresh();
+  if (params.get('quiz') && !logs[todayISO()]?.quizAt) openQuiz(config, logs, refresh);
   return () => {
     root.innerHTML = '';
   };

@@ -205,6 +205,60 @@ export interface MorningConfig {
   routine: RoutineItem[];
   /** optional monthly spending budget in EUR */
   budget?: number;
+  /** Ziel „Früher aufstehen“ */
+  wakeGoal?: WakeGoal;
+  /** Pünktlich zur Arbeit */
+  work?: WorkConfig;
+  /** keep the habits „Früh aufstehen“ / „Pünktlich bei der Arbeit“ in sync */
+  linkHabits?: boolean;
   /** routine items checked per day: { '2026-11-12': ['id1'] } (only recent days kept) */
   checks: Record<string, string[]>;
+}
+
+// ---------- Aufstehen & Pünktlichkeit ----------
+export interface WakeGoal {
+  /** final target wake time HH:MM */
+  goal: string;
+  /** step towards the goal gradually */
+  gradual: boolean;
+  /** wake time when the plan started */
+  start: string;
+  startDate: string;
+  stepMinutes: number;
+  everyDays: number;
+}
+
+export interface WorkDay {
+  start: string; // HH:MM
+  travel: number; // minutes
+}
+
+export interface WorkConfig {
+  /** ISO weekday '1'..'7' → work start + travel time */
+  days: Record<string, WorkDay>;
+  leaveRemind: boolean;
+  /** push this many minutes before leaving */
+  leaveLead: number;
+  /** evening check-in push „Warst du pünktlich?“ (HH:MM), optional */
+  checkinTime?: string;
+}
+
+export type Punctuality = 'ja' | 'knapp' | 'spaet';
+
+export interface WakeLog {
+  date: string;
+  /** quiz finished at HH:MM */
+  quizAt?: string;
+  /** answer to „Wann bist du heute aufgestanden?“ */
+  wokeAt?: string;
+  /** target wake time of that day */
+  target?: string;
+  early?: boolean;
+  score?: number;
+  total?: number;
+  focus?: string;
+  leaveAt?: string;
+  punctual?: Punctuality;
+  /** brain-task kinds used (avoided the next day) */
+  kinds?: string[];
 }

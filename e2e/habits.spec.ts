@@ -174,11 +174,11 @@ test('Weckzeit-Mitteilung und Gewohnheits-Erinnerung landen beim Server', async 
   const reminders = (await control<{ id: string; at: string; url: string; title: string }[]>('/store?key=push.reminders'))!;
   const m = reminders.find((r) => r.id === `morning:${tomorrow}`)!;
   expect(new Date(m.at).toLocaleTimeString('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' })).toBe('06:15');
-  expect(m.url).toBe('#/morgen');
+  expect(m.url).toBe('#/morgen?quiz=1');
   const tick = await control<{ sent: number }>(`/tick?now=${encodeURIComponent(new Date(Date.parse(m.at) + 1000).toISOString())}`);
   expect(tick.sent).toBeGreaterThanOrEqual(1);
   const got = await control<{ payload: { title: string; url: string } }[]>('/push-received');
-  expect(got.find((x) => x.payload.url === '#/morgen')?.payload.title).toBe('Guten Morgen ☀️');
+  expect(got.find((x) => x.payload.url === '#/morgen?quiz=1')?.payload.title).toBe('Guten Morgen ☀️');
 
   await page.goto('/#/gewohnheiten');
   await page.getByTestId('habit-new').click();

@@ -1,6 +1,7 @@
 /** Pure Morgenplaner logic (unit-tested). */
 import { addDays, parseLocalDate } from '../../shared/dates';
 import type { Habit, MorningConfig, RoutineItem, TodoItem } from '../../types';
+import { normalizeWakeGoal, normalizeWork } from './wake';
 import { frequencyLabel, isDone, isDueOn } from '../habits/logic';
 
 export const DEFAULT_ROUTINE: RoutineItem[] = [
@@ -22,6 +23,9 @@ export function normalizeConfig(raw: Partial<MorningConfig> | undefined): Mornin
     routine: Array.isArray(c.routine) ? c.routine.filter((r) => r && typeof r.title === 'string' && r.title.trim()).map((r) => ({ id: String(r.id), title: r.title.trim().slice(0, 80), time: time(r.time) })) : DEFAULT_ROUTINE,
     checks: c.checks && typeof c.checks === 'object' ? c.checks : {},
     budget: typeof c.budget === 'number' && c.budget > 0 ? c.budget : undefined,
+    wakeGoal: normalizeWakeGoal(c.wakeGoal),
+    work: normalizeWork(c.work),
+    linkHabits: c.linkHabits === true ? true : undefined,
   };
 }
 

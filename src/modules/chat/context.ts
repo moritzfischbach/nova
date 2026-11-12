@@ -1,7 +1,8 @@
 /** Compact summary of local Nova data for the chat (kept well below the server's 3000-char limit). */
 import { addDays, todayISO } from '../../shared/dates';
 import { formatEUR } from '../../shared/money';
-import type { Goal, Habit, TodoItem, TodoList } from '../../types';
+import type { Goal, Habit, MorningConfig, TodoItem, TodoList, WakeLog } from '../../types';
+import { wakeContextLines } from '../morning/wake';
 import { frequencyLabel, isDone, isDueOn, streak } from '../habits/logic';
 import type { EventInstance } from '../calendar/recurrence';
 import { savedAmount } from '../goals/match';
@@ -24,6 +25,7 @@ export interface ContextData {
   month: { label: string; expenses: number; income: number; byCategory: { name: string; amount: number }[] };
   goals: Goal[];
   habits?: Habit[];
+  wake?: { config: MorningConfig; logs: Record<string, WakeLog> };
 }
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
@@ -64,6 +66,7 @@ export function formatContext(d: ContextData): string {
       lines.push(`- ${h.emoji} ${clip(h.name, 40)} (${frequencyLabel(h.frequency)}): heute ${isDone(h, d.today) ? 'erledigt' : isDueOn(h, d.today) ? 'offen' : 'frei'}${s.current ? `, Serie ${s.current} ${s.unit === 'Tag' ? 'Tage' : 'Wochen'}` : ''}`);
     });
   }
+  if (d.wake && (d.wake.config.wakeGoal || d.wake.config.work || Object.keys(d.wake.logs).length)) lines.unshift(...wakeContextLines(d.wake.config, d.wake.logs, d.today));
   let text = lines.join('\n');
   if (text.length > CONTEXT_MAX) text = `${text.slice(0, CONTEXT_MAX - 1)}…`;
   return text;
@@ -77,6 +80,8 @@ export async function buildContext(): Promise<string> {
     import('../goals/repo'),
     import('../habits/repo'),
   ]);
+  const { getMorningConfig, getWakeLogs } = await import('../morning/repo');
+  const [wakeConfig, wakeLogs] = await Promise.all([getMorningConfig(), getWakeLogs()]);
   const today = todayISO();
   const [todos, lists, instances, month, goals, habits] = await Promise.all([listTodos(), listTodoLists(), upcomingInstances(today, 8, 20), summarizeMonth(monthKey(today)), listGoals(), listHabits()]);
   return formatContext({
@@ -92,5 +97,6 @@ export async function buildContext(): Promise<string> {
     },
     goals,
     habits,
+    wake: { config: wakeConfig, logs: wakeLogs },
   });
 }

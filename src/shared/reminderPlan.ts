@@ -4,7 +4,8 @@
  */
 import { addDays, parseLocalDate } from './dates';
 import { expandAll } from '../modules/calendar/recurrence';
-import type { CalendarEvent, Goal, Habit, MorningConfig, TodoItem } from '../types';
+import type { CalendarEvent, Goal, Habit, MorningConfig, TodoItem, WakeLog } from '../types';
+import { fromMin, leaveTimeFor, targetWakeFor, toMin, workDayOf } from '../modules/morning/wake';
 import { isDone, isScheduled, weekCount } from '../modules/habits/logic';
 
 export interface PlannedReminder {
@@ -30,7 +31,7 @@ function lead(minutes: number): string {
 }
 
 export function planReminders(
-  input: { events: CalendarEvent[]; todos: TodoItem[]; goals: Goal[]; habits?: Habit[]; morning?: MorningConfig },
+  input: { events: CalendarEvent[]; todos: TodoItem[]; goals: Goal[]; habits?: Habit[]; morning?: MorningConfig; wakeLogs?: Record<string, WakeLog> },
   now: Date = new Date(),
   horizonDays = 30,
 ): PlannedReminder[] {
@@ -84,8 +85,23 @@ export function planReminders(
   const dailyDays = Math.min(horizonDays, 14);
   for (let i = 0; i <= dailyDays; i += 1) {
     const date = addDays(today, i);
-    if (input.morning?.remind) {
-      push({ id: `morning:${date}`, title: 'Guten Morgen ☀️', body: 'Dein Morgenplaner ist bereit – Termine, Aufgaben und Gewohnheiten für heute.', url: '#/morgen' }, localInstant(date, input.morning.wakeTime));
+    const m = input.morning;
+    if (m?.remind && !input.wakeLogs?.[date]?.quizAt) {
+      push({ id: `morning:${date}`, title: 'Guten Morgen ☀️', body: 'Zeit fürs Wach-Quiz – 3 kurze Fragen, dann steht dein Tag.', url: '#/morgen?quiz=1' }, localInstant(date, targetWakeFor(m, date)));
+    }
+    const work = workDayOf(m?.work, date);
+    if (m?.work && work) {
+      const leave = leaveTimeFor(m.work, date)!;
+      if (m.work.leaveRemind) {
+        const lead = m.work.leaveLead;
+        push(
+          { id: `leave:${date}`, title: 'Zeit loszugehen 🚶', body: `${lead ? `In ${lead} Min. losgehen (${leave} Uhr)` : `Jetzt losgehen (${leave} Uhr)`} – Arbeitsbeginn ${work.start} Uhr, ${work.travel} Min. Weg.`, url: '#/morgen' },
+          localInstant(date, fromMin(toMin(leave) - lead)),
+        );
+      }
+      if (m.work.checkinTime && !input.wakeLogs?.[date]?.punctual) {
+        push({ id: `checkin:${date}`, title: 'Warst du heute pünktlich?', body: 'Ein Tipp genügt: Ja, knapp oder zu spät.', url: `#/morgen?checkin=${date}` }, localInstant(date, m.work.checkinTime));
+      }
     }
     for (const h of input.habits ?? []) {
       if (h.archived || !h.reminderTime || isDone(h, date)) continue;

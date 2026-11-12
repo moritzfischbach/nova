@@ -100,18 +100,19 @@ export function syncReminders(): Promise<void> {
   if (pending) return pending;
   pending = (async () => {
     try {
-      const [events, todos, goals, habits, morning] = await Promise.all([
+      const [events, todos, goals, habits, morning, wakeLogs] = await Promise.all([
         getAll<CalendarEvent>(STORES.events),
         getAll<TodoItem>(STORES.todos),
         getAll<Goal>(STORES.goals),
         getAll<Habit>(STORES.habits),
         import('../modules/morning/repo').then((m) => m.getMorningConfig()),
+        import('../modules/morning/repo').then((m) => m.getWakeLogs()),
       ]);
       // Re-register this device: the free server has no persistent disk and may have forgotten it.
       const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : undefined;
       const sub = await reg?.pushManager.getSubscription();
       if (sub) await postJson('api/push/subscribe', { subscription: sub.toJSON(), label: isIOS() ? 'iPhone' : navigator.platform }).catch(() => undefined);
-      const reminders = planReminders({ events, todos, goals, habits, morning });
+      const reminders = planReminders({ events, todos, goals, habits, morning, wakeLogs });
       await postJson('api/push/reminders', { reminders }, 'PUT');
     } catch {
       /* offline – next change or app start retries */
