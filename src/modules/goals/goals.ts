@@ -1,3 +1,4 @@
+import { displayColor } from '../../shared/palette';
 import { formatDateHuman, todayISO } from '../../shared/dates';
 import { escapeHtml } from '../../shared/escape';
 import { icons } from '../../shared/icons';
@@ -66,11 +67,11 @@ export async function renderGoals(root: HTMLElement): Promise<() => void> {
     return `
       <li>
         <button type="button" class="item-row goal-card ${goal.status}" data-goal="${goal.id}" data-testid="goal-item">
-          <span class="goal-dot" style="background:${goal.color}">${goal.kind === 'spar' ? '€' : '◎'}</span>
+          <span class="goal-dot" style="--c:${displayColor(goal.color)}">${goal.kind === 'spar' ? '€' : '◎'}</span>
           <div class="item-copy">
             <span class="item-title">${escapeHtml(goal.title)}</span>
             <span class="item-meta">${goal.kind === 'spar' ? `${formatEUR(savedAmount(goal))} von ${formatEUR(goal.targetAmount ?? 0)} · ` : ''}${escapeHtml(date)}</span>
-            ${goal.kind === 'spar' ? `<span class="progress"><i style="width:${pct}%;background:${goal.color}"></i></span>` : ''}
+            ${goal.kind === 'spar' ? `<span class="progress"><i style="width:${pct}%;background:${displayColor(goal.color)};color:${displayColor(goal.color)}"></i></span>` : ''}
           </div>
           <span class="badge ${goal.status === 'erreicht' ? 'badge-gesendet' : 'badge-wartend'}">${goal.status === 'erreicht' ? 'Erreicht' : goal.kind === 'spar' ? `${pct} %` : 'Offen'}</span>
         </button>
@@ -91,7 +92,7 @@ export async function renderGoals(root: HTMLElement): Promise<() => void> {
             <article class="stat-card"><p>Gespart</p><strong data-testid="goal-saved">${formatEUR(savedAmount(goal))}</strong></article>
             <article class="stat-card"><p>Ziel</p><strong>${formatEUR(goal.targetAmount ?? 0)}</strong></article>
           </div>
-          <span class="progress big"><i style="width:${Math.round(goalProgress(goal) * 100)}%;background:${goal.color}"></i></span>
+          <span class="progress big"><i style="width:${Math.round(goalProgress(goal) * 100)}%;background:${displayColor(goal.color)};color:${displayColor(goal.color)}"></i></span>
           ${rate ? `<p class="muted">Empfohlen: ${formatEUR(rate)} pro Monat bis zum Zieldatum.</p>` : ''}
           <form class="composer static" data-deposit>
             <input type="text" inputmode="decimal" placeholder="Betrag, z. B. 50" data-testid="deposit-amount" />

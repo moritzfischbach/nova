@@ -1,3 +1,4 @@
+import { displayColor, PALETTE } from '../../shared/palette';
 import { monthLabel, parseLocalDate, todayISO } from '../../shared/dates';
 import { escapeHtml } from '../../shared/escape';
 import { icons } from '../../shared/icons';
@@ -84,7 +85,7 @@ export async function renderFinance(root: HTMLElement): Promise<() => void> {
                       <div class="bar-row">
                         <span class="bar-label">${escapeHtml(row.category.name)}</span>
                         <div class="bar-track">
-                          <div class="bar-fill" style="width:${width}%; background:${row.category.color}"></div>
+                          <div class="bar-fill" style="width:${width}%; background:${displayColor(row.category.color)};color:${displayColor(row.category.color)}"></div>
                         </div>
                         <span class="bar-value">${formatEUR(row.amount)}</span>
                       </div>`;
@@ -105,7 +106,7 @@ export async function renderFinance(root: HTMLElement): Promise<() => void> {
                       const sign = tx.type === 'income' ? '+' : '−';
                       return `
                         <li class="item-row" data-testid="tx-item">
-                          <span class="cat-dot" style="background:${category?.color ?? '#8A7E76'}"></span>
+                          <span class="cat-dot" style="background:${displayColor(category?.color, PALETTE.stone)}"></span>
                           <div class="item-copy">
                             <span class="item-title">${escapeHtml(category?.name ?? 'Unbekannt')}</span>
                             <span class="item-meta">${escapeHtml(tx.note || tx.rawInput)} · ${escapeHtml(parseLocalDate(tx.date).toLocaleDateString('de-DE'))}</span>
@@ -203,7 +204,7 @@ export async function renderFinance(root: HTMLElement): Promise<() => void> {
           .map(
             (category) => `
           <li class="item-row">
-            <span class="cat-dot" style="background:${category.color}"></span>
+            <span class="cat-dot" style="background:${displayColor(category.color)}"></span>
             <div class="item-copy">
               <span class="item-title">${escapeHtml(category.name)}</span>
               <span class="item-meta">${category.type === 'income' ? 'Einnahme' : 'Ausgabe'}${category.keywords.length ? ` · ${escapeHtml(category.keywords.slice(0, 3).join(', '))}` : ''}</span>
@@ -248,7 +249,7 @@ export async function renderFinance(root: HTMLElement): Promise<() => void> {
       </label>
       <label class="field">
         <span>Farbe</span>
-        <input type="color" name="color" value="${escapeHtml(category?.color ?? '#7C4A6A')}" />
+        <input type="color" name="color" value="${escapeHtml(category?.color ?? PALETTE.orchid)}" />
       </label>
       <label class="field">
         <span>Schlüsselwörter (kommagetrennt)</span>
@@ -273,7 +274,7 @@ export async function renderFinance(root: HTMLElement): Promise<() => void> {
       const payload = {
         name,
         type: (String(data.get('type')) === 'income' ? 'income' : 'expense') as Category['type'],
-        color: String(data.get('color') ?? '#7C4A6A'),
+        color: String(data.get('color') ?? PALETTE.orchid),
         keywords: String(data.get('keywords') ?? '')
           .split(',')
           .map((part) => part.trim())

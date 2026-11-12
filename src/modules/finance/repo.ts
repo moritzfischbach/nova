@@ -132,7 +132,7 @@ export async function summarizeMonth(month: string): Promise<MonthSummary> {
         id: categoryId,
         name: 'Unbekannt',
         keywords: [],
-        color: '#8A7E76',
+        color: '#A8A39B',
         type: 'expense' as const,
         sortOrder: 100,
       },

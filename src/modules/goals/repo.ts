@@ -1,9 +1,10 @@
+import { PALETTE } from '../../shared/palette';
 import { getAll, getById, putRecord, removeRecord, STORES } from '../../data/db';
 import { createId } from '../../shared/id';
 import type { Goal, GoalDeposit } from '../../types';
 import { goalProgress } from './match';
 
-export const GOAL_COLORS = ['#C9A36A', '#7C4A6A', '#3D7A9A', '#5B8A4A', '#B85C8A', '#D08A2A'];
+export const GOAL_COLORS = [PALETTE.champagne, PALETTE.sky, PALETTE.sage, PALETTE.orchid, PALETTE.amber, PALETTE.lavender];
 
 export async function listGoals(): Promise<Goal[]> {
   const goals = await getAll<Goal>(STORES.goals);

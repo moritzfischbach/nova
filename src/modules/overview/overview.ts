@@ -1,3 +1,4 @@
+import logoSvg from '../../assets/logo.svg?raw';
 import { formatDateHuman, greeting, todayISO } from '../../shared/dates';
 import { escapeHtml } from '../../shared/escape';
 import { formatEUR } from '../../shared/money';
@@ -27,7 +28,11 @@ export async function renderOverview(root: HTMLElement): Promise<() => void> {
   root.innerHTML = `
     <section class="page overview">
       <header class="hero">
-        <p class="eyebrow">Nova</p>
+        <div class="hero-top">
+          <span class="brand-mark" data-testid="brand-logo">${logoSvg}</span>
+          <span class="brand-word">Nova</span>
+        </div>
+        <p class="eyebrow">${escapeHtml(new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }))}</p>
         <h1>${escapeHtml(greeting())}.</h1>
         <p class="lede">Ich bin Nova, deine persönliche Assistentin. Hier siehst du den Stand der Dinge – Aufgaben, Termine und Finanzen bleiben bei dir auf dem Gerät.</p>
         <div class="hero-actions">

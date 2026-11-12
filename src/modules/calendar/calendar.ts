@@ -1,3 +1,4 @@
+import { displayColor, PALETTE } from '../../shared/palette';
 import { SERVER_NOTE } from '../../shared/api';
 import { createCalendar, destroyCalendar, DayGrid, Interaction, List, TimeGrid, type Calendar } from '@event-calendar/core';
 import '@event-calendar/core/index.css';
@@ -23,7 +24,7 @@ const VIEWS: { name: ViewName; label: string }[] = [
   { name: 'timeGridDay', label: 'Tag' },
   { name: 'listMonth', label: 'Agenda' },
 ];
-export const EVENT_COLORS = ['#4A2458', '#7C4A6A', '#3D7A9A', '#2E8B6A', '#5B8A4A', '#D08A2A', '#C45C5C', '#B85C8A'];
+export const EVENT_COLORS = [PALETTE.silver, PALETTE.champagne, PALETTE.sky, PALETTE.sage, PALETTE.moss, PALETTE.amber, PALETTE.rose, PALETTE.lavender];
 export const REMINDER_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Keine' },
   { value: '0', label: 'Zum Beginn' },
@@ -110,7 +111,7 @@ export async function renderCalendar(root: HTMLElement): Promise<() => void> {
           const [events, goals] = await Promise.all([listEvents(), listGoals()]);
           const instances = expandAll(events, from, to).map((i) => {
             const e = i.event;
-            const color = e.color ?? '#4A2458';
+            const color = displayColor(e.color);
             if (e.allDay) {
               return {
                 id: i.instanceId,
@@ -262,7 +263,7 @@ export async function renderCalendar(root: HTMLElement): Promise<() => void> {
   function openEventSheet(initial: Partial<CalendarEvent> & { date: string }, opts: { occurrence?: string; offerGoal?: boolean } = {}): void {
     const rule = parseRRule(initial.rrule);
     const endMode = rule?.count ? 'count' : rule?.until ? 'until' : 'never';
-    const color = initial.color ?? EVENT_COLORS[0];
+    const color = displayColor(initial.color, EVENT_COLORS[0]);
     const form = document.createElement('form');
     form.className = 'event-form';
     form.innerHTML = `
@@ -319,6 +320,20 @@ export async function renderCalendar(root: HTMLElement): Promise<() => void> {
       form.querySelectorAll<HTMLElement>('[data-endval]').forEach((el) => (el.hidden = el.dataset.endval !== endModeSel.value));
     };
     [allDay, freq, endModeSel].forEach((el) => el.addEventListener('change', sync));
+    // like Google: moving the start date moves the end date along (keeps the duration)
+    const startDateInput = form.querySelector('[name="date"]') as HTMLInputElement;
+    const endDateInput = form.querySelector('[name="endDate"]') as HTMLInputElement;
+    let lastStart = startDateInput.value;
+    startDateInput.addEventListener('change', () => {
+      const prev = Date.parse(`${lastStart}T00:00:00Z`);
+      const next = Date.parse(`${startDateInput.value}T00:00:00Z`);
+      const end = Date.parse(`${endDateInput.value}T00:00:00Z`);
+      if (!Number.isNaN(prev) && !Number.isNaN(next)) {
+        const shifted = Number.isNaN(end) ? next : Math.max(next, end + (next - prev));
+        endDateInput.value = new Date(shifted).toISOString().slice(0, 10);
+      }
+      lastStart = startDateInput.value;
+    });
     sync();
     form.querySelectorAll<HTMLElement>('[data-color]').forEach((b) =>
       b.addEventListener('click', () => {

@@ -24,6 +24,17 @@ npm start                # Server + PWA: http://localhost:8787
 
 Konfiguration steht in `.env` (Vorlage: `.env.example`). `.env` und `server/data/` sind in `.gitignore`.
 
+## Design & Logo
+
+- Dunkles, ruhiges Farbschema: fast schwarze Flächen (`#0a0a0b`), feine Haarlinien, Weiß/Silber mit dezentem Champagner-Akzent; Tab-Leiste aus Milchglas. Alle Farben als CSS-Variablen in `src/styles.css`; Kalender-, Ziel- und Kategorie-Farben in `src/shared/palette.ts` (ältere, gespeicherte Farben werden automatisch auf die dunkle Palette abgebildet).
+- Schrift: SF Pro auf Apple-Geräten, sonst Inter (selbst gehostet über `@fontsource-variable/inter`).
+- Logo: verschachtelte, innen berührende Kreise, die spiralförmig zu einem kleinen Kreis zusammenlaufen – als Vektor in `scripts/logo.mjs` konstruiert. `node scripts/logo.mjs` erzeugt `public/logo.svg`, `src/assets/logo.svg` (In-App-Zeichen) und alle Icons (180, 192, 512, maskable mit Schutzrand, Favicon PNG + SVG) auf reinem Schwarz.
+- Screenshots: `node e2e/screens.mjs <url> <ordner>` (iPhone-Größe, mit Beispieldaten).
+
+## Nur-statisch (GitHub Pages)
+
+Die Pages-Action baut mit `NOVA_BASE=/<repo>/` und – solange die Repo-Variable `NOVA_API_BASE` leer ist – mit `VITE_NOVA_STATIC=1`. Dann ruft Nova keinen Server auf; Grok Bot, Mitteilungen und Google/Apple-Sync zeigen „Braucht den Nova-Server, kommt nach der Server-Einrichtung.“ Aufgaben, Finanzen, Ziele, Kalender, Sprache und ICS funktionieren lokal. Sobald ein Server läuft: Repo-Variable `NOVA_API_BASE=https://<server>/` setzen und `ALLOWED_ORIGINS=https://<user>.github.io` auf dem Server.
+
 ## Struktur
 
 ```
